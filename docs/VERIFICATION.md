@@ -92,3 +92,20 @@ Android16 signed normal update SUCCESS, cold start1181ms. Последующая
 Быстрый второй выбор после раннего ACK теперь принимается, а фактическая запись ожидает400ms в существующем mutex Session. Ранее второй выбор мог молча игнорироваться при уже активных кнопках. Дополнительный timing regression проверяет ожидание native rate limit и подтверждение без лишнего повтора. Финальный набор содержит32теста; результат окончательной сборки ниже фиксируется после завершения.
 
 Финальные исходники0.1.2 после обеих последних правок: BUILD SUCCESSFUL,32tests/0failures/0errors, lint0errors/28warnings, signeddebug и release собраны. Временные ранние APK были заменены локально до публикации; их checksum не является checksum релиза. Окончательные файлы и GitHub receipt фиксируются после привязки к source commit и скачивания обратно.
+
+## 0.1.2 release receipt
+
+[Release v0.1.2](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.1.2) опубликован, non-draft prerelease. Source и tag target: `98f351d3c6607fc01bddb26c2622143722c0d3d0`. Окончательная перепаковка после commit успешна; normal APK содержит этот source SHA в version-control metadata.
+
+| Подписанный файл | Размер, bytes | SHA256 | GitHub asset ID |
+|---|---:|---|---:|
+| AirMode-0.1.2.apk | 2304290 | `31ad2ec689142239e16bc81a96609c38f9299c4783ff5a9155e1076d24ffc49c` | 616438465 |
+| AirMode-0.1.2-diagnostics.apk | 33830714 | `9cd70cfb53a901553d34782b5d0ab763419da6214c5f59aa0b7ae1657c48b1dc` | 616438461 |
+
+Оба asset имеют state uploaded. Оба APK и SHA256SUMS скачаны обратно с GitHub; `shasum -a256 -c SHA256SUMS` подтвердил оба файла. SHA256SUMS asset616438463. Окончательные APK подписаны прежним certificate21f14d555e532b6d1618595d41983f02868e1891254f0a7251085f833cc47cee; apksigner verify и16KB zipalign PASS. Normal dex не содержит ProtocolDiagnostics или диагностических текстов. Старые0.1.0/0.1.1 releases/assets/tags сохранены.
+
+Тот же окончательный normal APK повторно установлен через `adb install -r` на API36 и API37beta: обе установки SUCCESS, оба MainActivity start Status ok. API36 cold TotalTime1378ms; второй API37 запуск обозначен системой WARM, TotalTime1143ms. Последнее значение не является cold-start измерением и не заменяет критерий физического Pixel8.
+
+Source [CI37518426577](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37518426577) terminal SUCCESS; tests/lint/debug/release/upload и cleanup steps SUCCESS. Скачан artifact11438811248 (`APK-and-checks`,13028572bytes, digest`beee636704e9a0eb442fb2dedb195fbe78c547f06920a02cdf65fa59f0969c8b`); его HTML report подтверждает32tests/0failures/0ignored. CI release unsigned; опубликованные APK выше подписаны локально и отдельно проверены.
+
+[Issue1](https://github.com/andrewkazavchinskyy-cloud/AirMode/issues/1) сохраняется открытым: обновлены реальные частичные наблюдения пользователя и retest0.1.2. Аппаратная работа Adaptive, независимая точность батареи, реальная задержка popup и полная PRD-матрица ещё не подтверждены.
