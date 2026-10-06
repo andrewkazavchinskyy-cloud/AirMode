@@ -67,3 +67,6 @@ CI62ff242 (язык плитки/политика BLE до battery fix) [3751121
 Финальный diagnostic popup: screenshot [android17-diagnostics-popup.png](screenshots/android17-diagnostics-popup.png); native NotificationRecord ID3 имеет importance4, sound/vibrate=null, timeoutPT8S, custom headsUp/big views. После фактически выжданных9.2s active ID3 отсутствует. Повторный тестовый popup работает; статический отчёт после теста обновляет разрешение/channel4. Это строго демонстрационный preview.
 
 Финальный обычный release0.1.1 обновил diagnostic на Android17beta16KB без удаления настроек; install SUCCESS, launch/main SUCCESS с тремя—.
+
+##0.1.1 release receipt
+[Release v0.1.1](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.1.1) опубликован, non-draft prerelease, source/targetf1a70372e0687a98ccaa82405fb695a6e93fd585. Normal APK asset616336363 и diagnostic asset616336364 uploaded; GitHub SHA256 digest совпадает с локальными значениями выше. Оба APK иSHA256SUMS скачаны обратно через gh; обе checksum PASS.0.1.0 сохранён без замены/удаления. Новый source CI [37512740790](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37512740790) in_progress на момент публикации; локальные обязательные checks PASS. Следующий шаг — пользовательский retest заряда/popup или sanitized diagnostic report; аппаратный charge PASS не заявлен.
