@@ -12,18 +12,22 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.widget.RemoteViews
 import app.airmode.BuildConfig
+import app.airmode.bluetooth.ProtocolDiagnostics
 import app.airmode.MainActivity
 import app.airmode.R
 import app.airmode.data.Settings
 import app.airmode.domain.ConnectionState
 import app.airmode.domain.Battery
 import app.airmode.domain.BatteryReading
+import app.airmode.domain.Mode
+import app.airmode.widget.AirModeWidgetProvider
 import app.airmode.domain.DeviceState
 import app.airmode.domain.Repository
 import app.airmode.tile.NoiseTileService
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import java.util.Locale
 
 class AirModeService : Service() {
@@ -35,6 +39,12 @@ class AirModeService : Service() {
     private var popupDeadline = 0L
     private var connectionId: Long? = null
     private var foreground = false
+    private var starting = true
+    private var widgetCommand: Job? = null
+    private var staleUpdate: Job? = null
+    private var lastForegroundContent: List<Any?>? = null
+    private var lastPopupContent: List<Any?>? = null
+    private var lastTileContent: List<Any?>? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -47,25 +57,78 @@ class AirModeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        starting = false
+        if (intent?.action == ACTION_WIDGET_MODE) {
+            val mode = Mode.fromCode(intent.getIntExtra(EXTRA_MODE, 0)) ?: return START_NOT_STICKY
+            if (!foreground || !hasBluetoothPermission()) {
+                val context = localized(this, repository.settings.state.value)
+                AirModeWidgetProvider.update(this, repository.state.value, repository.settings.state.value,
+                    context.getString(if (hasBluetoothPermission()) R.string.service_unavailable else R.string.permission_needed))
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            if (widgetCommand?.isActive == true) return START_NOT_STICKY
+            widgetCommand = scope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    // Never authorize a command from the launcher view or a persisted model.
+                    repository.retryControl()
+                    val ready = withTimeoutOrNull(5_000) {
+                        repository.state.first { it.canSwitch || it.connection == ConnectionState.UnsupportedModel ||
+                            it.connection == ConnectionState.ProtocolUnavailable || it.model?.anc == false }
+                    }
+                    if (ready?.canSwitch == true && hasBluetoothPermission()) repository.switchMode(mode)
+                } finally {
+                    widgetCommand = null
+                    update(repository.state.value, repository.settings.state.value)
+                }
+            }
+            widgetCommand?.start()
+            return START_NOT_STICKY
+        }
         val state = repository.state.value
         if (!state.connected || state.connection == ConnectionState.UnsupportedModel) {
             update(state, repository.settings.state.value)
             return START_NOT_STICKY
         }
         if (!foreground && !ensureForeground(state, repository.settings.state.value)) return START_NOT_STICKY
-        repository.start()
         repository.refresh()
         return START_NOT_STICKY
     }
 
+    private fun hasBluetoothPermission() = listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
+        .all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+
+    private fun visualBattery(state: DeviceState): List<Any?> {
+        val now = SystemClock.elapsedRealtime()
+        return listOf(state.battery.left, state.battery.case, state.battery.right).flatMap {
+            listOf(it.percent, it.available, it.charging, it.stale(now))
+        }
+    }
+
     private fun update(state: DeviceState, settings: Settings) {
-        NoiseTileService.refresh(this)
+        val tileContent = listOf(state.connected, state.connection == ConnectionState.UnsupportedModel,
+            state.connection == ConnectionState.ProtocolUnavailable, state.canSwitch, state.model?.anc, state.mode, settings.language)
+        if (tileContent != lastTileContent) { lastTileContent = tileContent; NoiseTileService.refresh(this) }
+        AirModeWidgetProvider.update(this, state, settings)
+        staleUpdate?.cancel()
+        val now = SystemClock.elapsedRealtime()
+        val nextStale = listOf(state.battery.left, state.battery.case, state.battery.right)
+            .filter { it.percent != null && it.available && !it.stale(now) }
+            .minOfOrNull { it.updatedAt + 120_001 }
+        if (state.connected && nextStale != null) staleUpdate = scope.launch {
+            delay((nextStale - SystemClock.elapsedRealtime()).coerceAtLeast(1))
+            update(repository.state.value, repository.settings.state.value)
+        }
         if (!state.connected || state.connection == ConnectionState.UnsupportedModel) {
             popupShown = false
             popupDeadline = 0L
             connectionId = null
+            lastPopupContent = null
             notifications.cancel(POPUP_ID)
-            if (foreground) { stopForeground(STOP_FOREGROUND_REMOVE); foreground = false }
+            // A widget PendingIntent cold-starts the FGS before Bluetooth profile discovery.
+            if (foreground && !starting && widgetCommand?.isActive != true) {
+                stopForeground(STOP_FOREGROUND_REMOVE); foreground = false; foregroundReady = false; lastForegroundContent = null
+            }
             if (stopping == null) stopping = scope.launch {
                 delay(30_000)
                 stopSelf()
@@ -74,27 +137,46 @@ class AirModeService : Service() {
         }
         stopping?.cancel()
         stopping = null
-        if (connectionId != state.connectionId) { popupShown = false; popupDeadline = 0L; connectionId = state.connectionId }
+        if (connectionId != state.connectionId) {
+            popupShown = false; popupDeadline = 0L; connectionId = state.connectionId; lastPopupContent = null
+        }
+        val foregroundContent = listOf(state.name, settings.persistent, settings.language) +
+            if (settings.persistent) visualBattery(state) else emptyList()
         if (!foreground) { if (!ensureForeground(state, settings)) return }
-        else notifications.notify(FOREGROUND_ID, notification(state, settings))
-        if (!settings.popup) { notifications.cancel(POPUP_ID); popupDeadline = 0L }
-        // A confirmed supported model may honestly show unknown levels while its data arrives.
-        if (settings.popup && state.model != null && canNotify(this)) {
-            val now = SystemClock.elapsedRealtime()
+        else if (foregroundContent != lastForegroundContent) notifications.notify(FOREGROUND_ID, notification(state, settings))
+        lastForegroundContent = foregroundContent
+        if (!settings.popup) { notifications.cancel(POPUP_ID); popupDeadline = 0L; lastPopupContent = null }
+        // Existing metadata may arrive before model identity; no artificial delay is needed.
+        if (settings.popup && (state.model != null || state.battery.known) && canNotify(this)) {
             val firstPopup = !popupShown
             if (firstPopup) { popupShown = true; popupDeadline = now + 8_000 }
-            // Respect a user's dismissal instead of posting a second alert when data arrives.
-            if (now < popupDeadline && (firstPopup || notifications.activeNotifications.any { it.id == POPUP_ID })) notifications.notify(POPUP_ID,
-                popupNotification(localized(this, settings), state, popupDeadline - now))
+            val popupContent = listOf(state.name, state.model?.generation, settings.language) + visualBattery(state)
+            // Respect dismissal and the original eight-second deadline when later data arrives.
+            if (now < popupDeadline && (firstPopup || notifications.activeNotifications.any { it.id == POPUP_ID }) &&
+                popupContent != lastPopupContent) {
+                notifications.notify(POPUP_ID, popupNotification(localized(this, settings), state, popupDeadline - now))
+                ProtocolDiagnostics.note("connection popup ${if (firstPopup) "shown" else "updated"}; remaining=${popupDeadline - now}ms")
+                lastPopupContent = popupContent
+            }
         }
     }
 
     private fun ensureForeground(state: DeviceState, settings: Settings): Boolean = try {
         startForeground(FOREGROUND_ID, notification(state, settings))
         foreground = true
+        foregroundReady = true
         true
-    } catch (_: SecurityException) { stopSelf(); false }
-      catch (_: IllegalStateException) { stopSelf(); false }
+    } catch (_: SecurityException) { foregroundFailure(); false }
+      catch (_: IllegalStateException) { foregroundFailure(); false }
+
+    private fun foregroundFailure() {
+        foregroundReady = false
+        val settings = repository.settings.state.value
+        val context = localized(this, settings)
+        AirModeWidgetProvider.update(this, repository.state.value, settings,
+            context.getString(if (hasBluetoothPermission()) R.string.service_unavailable else R.string.permission_needed))
+        stopSelf()
+    }
 
     private fun createChannels() {
         val context = localized(this, repository.settings.state.value)
@@ -109,7 +191,9 @@ class AirModeService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val text = if (settings.persistent) batteryText(context, state) else
-            if (context.resources.configuration.locales[0].language == "ru") "AirPods подключены" else "AirPods connected"
+            if (context.resources.configuration.locales[0].language == "ru") {
+                if (state.connected) "AirPods подключены" else "Подключение AirPods…"
+            } else if (state.connected) "AirPods connected" else "Connecting AirPods…"
         return Notification.Builder(this, CONNECTION_CHANNEL)
             .setSmallIcon(R.drawable.ic_airmode)
             .setContentTitle(state.name ?: "AirMode")
@@ -122,6 +206,7 @@ class AirModeService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onDestroy() {
+        foregroundReady = false
         scope.cancel()
         notifications.cancel(POPUP_ID)
         repository.serviceStopped()
@@ -129,6 +214,10 @@ class AirModeService : Service() {
     }
 
     companion object {
+        @Volatile var foregroundReady = false
+            private set
+        const val ACTION_WIDGET_MODE = "app.airmode.action.WIDGET_MODE"
+        const val EXTRA_MODE = "mode"
         private const val POPUP_CHANNEL = "charge_popup_v2"
         private const val CONNECTION_CHANNEL = "connection"
         private const val FOREGROUND_ID = 1
@@ -147,10 +236,11 @@ class AirModeService : Service() {
             val now = SystemClock.elapsedRealtime()
             fun component(column: Int, label: Int, value: Int, status: Int, labelKey: Int, battery: BatteryReading) {
                 val name = context.getString(labelKey)
-                val percentage = battery.percent?.let { "$it%" } ?: "—"
+                val percentage = battery.percent?.takeIf { battery.available }?.let { "$it%" } ?: "—"
                 val detail = listOfNotNull(
-                    context.getString(R.string.charging).takeIf { battery.charging },
-                    context.getString(R.string.stale).takeIf { battery.stale(now) },
+                    context.getString(R.string.widget_last_known, battery.percent).takeIf { !battery.available && battery.percent != null },
+                    context.getString(R.string.charging).takeIf { battery.available && battery.charging },
+                    context.getString(R.string.stale).takeIf { battery.available && battery.stale(now) },
                 ).joinToString(" · ")
                 content.setTextViewText(label, name)
                 content.setTextViewText(value, percentage)
@@ -207,10 +297,14 @@ class AirModeService : Service() {
             return context.createConfigurationContext(configuration)
         }
         private fun batteryText(context: Context, state: DeviceState): String {
-            fun value(percent: Int?) = percent?.let { "$it%" } ?: "—"
-            return "${context.getString(R.string.battery_left)} ${value(state.battery.left.percent)} · " +
-                "${context.getString(R.string.battery_right)} ${value(state.battery.right.percent)} · " +
-                "${context.getString(R.string.battery_case)} ${value(state.battery.case.percent)}"
+            fun value(reading: BatteryReading): String {
+                val percentage = reading.percent?.takeIf { reading.available }?.let { "$it%" } ?: "—"
+                return if (!reading.available && reading.percent != null) "$percentage (${context.getString(R.string.widget_last_known, reading.percent)})"
+                    else percentage
+            }
+            return "${context.getString(R.string.battery_left)} ${value(state.battery.left)} · " +
+                "${context.getString(R.string.battery_right)} ${value(state.battery.right)} · " +
+                "${context.getString(R.string.battery_case)} ${value(state.battery.case)}"
         }
     }
 }

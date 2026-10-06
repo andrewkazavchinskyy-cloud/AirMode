@@ -2,6 +2,7 @@ package app.airmode.bluetooth
 
 import app.airmode.domain.Battery
 import app.airmode.domain.BatteryReading
+import app.airmode.domain.BatterySource
 
 /** Apple manufacturer payload, excluding the company ID. This does not establish device identity. */
 object AdvertParser {
@@ -23,7 +24,8 @@ object AdvertParser {
     }
 
     private fun reading(nibble: Int, charging: Boolean, now: Long): BatteryReading =
-        if (nibble in 0..10) BatteryReading(nibble * 10, charging, now) else BatteryReading()
+        if (nibble in 0..10) BatteryReading(nibble * 10, charging, now, source = BatterySource.ADVERTISEMENT)
+        else BatteryReading(source = BatterySource.ADVERTISEMENT, observedAt = now)
 }
 
 internal fun ByteArray.u(index: Int): Int = this[index].toInt() and 0xFF

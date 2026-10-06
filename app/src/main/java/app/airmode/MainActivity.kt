@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.LocaleManager
 import android.app.StatusBarManager
 import android.bluetooth.BluetoothAdapter
+import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -42,6 +43,7 @@ import app.airmode.domain.Repository
 import app.airmode.service.AirModeService
 import app.airmode.tile.NoiseTileService
 import app.airmode.ui.*
+import app.airmode.widget.AirModeWidgetProvider
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -66,7 +68,7 @@ class MainActivity : ComponentActivity() {
         var notificationDialog by remember { mutableStateOf(false) }
         var pendingNotification by remember { mutableStateOf<String?>(null) }
         var pendingPopupTest by remember { mutableStateOf(false) }
-        var tileMessage by remember { mutableStateOf<Int?>(null) }
+        var quickAccessMessage by remember { mutableStateOf<Int?>(null) }
         var diagnosticReport by remember { mutableStateOf<String?>(null) }
         var permissionsRefresh by remember { mutableIntStateOf(0) }
         val bluetoothGranted = permissionsRefresh.let { hasBluetoothPermission() }
@@ -89,7 +91,7 @@ class MainActivity : ComponentActivity() {
                 }
                 repository.refresh()
                 if (granted && pendingPopupTest && BuildConfig.DEBUG) {
-                    AirModeService.testPopup(applicationContext)
+                    AirModeService.testPopup(AirModeService.localized(this@MainActivity, repository.settings.state.value))
                     diagnosticReport = ProtocolDiagnostics.report(applicationContext)
                 }
                 pendingPopupTest = false
@@ -125,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 if (manager.applicationLocales != desired) manager.applicationLocales = desired
             }
             NoiseTileService.refresh(this@MainActivity)
+            AirModeWidgetProvider.update(this@MainActivity, device, settings, force = true)
         }
         CompositionLocalProvider(LocalContext provides localizedContext,
             LocalConfiguration provides localizedContext.resources.configuration) {
@@ -164,7 +167,8 @@ class MainActivity : ComponentActivity() {
                                 }, { value -> scope.launch { repository.settings.setAutoStart(value) } },
                                 { modes -> scope.launch { repository.settings.setTileModes(modes) } },
                                 { language -> scope.launch { repository.settings.setLanguage(language) } },
-                                { addTile { tileMessage = it } },
+                                { addTile { quickAccessMessage = it } },
+                                { addWidget { quickAccessMessage = it } },
                                 { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))) },
                                 onDiagnostics = {
                                     if (BuildConfig.DEBUG) diagnosticReport = ProtocolDiagnostics.report(applicationContext)
@@ -189,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                         pendingNotification = "popup"
                                         notificationDialog = true
                                     } else {
-                                        AirModeService.testPopup(applicationContext)
+                                        AirModeService.testPopup(AirModeService.localized(this@MainActivity, repository.settings.state.value))
                                         diagnosticReport = ProtocolDiagnostics.report(applicationContext)
                                     }
                                 }) { Text(if (english) "Test popup" else "Проверить popup") }
@@ -218,9 +222,9 @@ class MainActivity : ComponentActivity() {
                     dismissButton = { TextButton(onClick = { notificationDialog = false; pendingNotification = null; pendingPopupTest = false }) {
                         Text(stringResource(R.string.cancel))
                     } })
-                tileMessage?.let { message -> AlertDialog(onDismissRequest = { tileMessage = null },
+                quickAccessMessage?.let { message -> AlertDialog(onDismissRequest = { quickAccessMessage = null },
                     text = { Text(stringResource(message)) },
-                    confirmButton = { TextButton(onClick = { tileMessage = null }) { Text(stringResource(R.string.done)) } }) }
+                    confirmButton = { TextButton(onClick = { quickAccessMessage = null }) { Text(stringResource(R.string.done)) } }) }
             }
         }
     }
@@ -242,6 +246,15 @@ class MainActivity : ComponentActivity() {
                     R.string.add_tile_done else R.string.add_tile_manual)
             }
         } catch (_: RuntimeException) { onResult(R.string.add_tile_manual) }
+    }
+
+    private fun addWidget(onResult: (Int) -> Unit) {
+        val manager = getSystemService(AppWidgetManager::class.java)
+        try {
+            if (!manager.isRequestPinAppWidgetSupported || !manager.requestPinAppWidget(
+                    ComponentName(this, AirModeWidgetProvider::class.java), null, null))
+                onResult(R.string.widget_pin_manual)
+        } catch (_: RuntimeException) { onResult(R.string.widget_pin_manual) }
     }
 
     companion object { const val REPOSITORY_URL = "https://github.com/andrewkazavchinskyy-cloud/AirMode" }

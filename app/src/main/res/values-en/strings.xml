@@ -59,4 +59,15 @@
     <string name="continue_action">Continue</string>
     <string name="service_unavailable">The service could not start. Open the app and try again.</string>
     <string name="bluetooth_unavailable">Bluetooth is unavailable on this device</string>
+    <string name="last_known">Last known: %1$d%%</string>
+    <string name="battery_waiting">Waiting for battery data. Open the case near your phone.</string>
+    <string name="noise_modes">Noise control</string>
+    <string name="mode_current">Current: %1$s</string>
+    <string name="mode_switching">Switching: %1$s</string>
+    <string name="control_connecting">Connecting noise controls…</string>
+    <string name="adaptive_hint">Adapts to surrounding noise.</string>
+    <string name="adaptive_no_reply">Earbuds did not confirm Adaptive mode. The last confirmed mode remains selected.</string>
+    <string name="add_widget">Add home screen widget</string>
+    <string name="widget_detail">Battery and four modes on your phone’s home screen.</string>
+    <string name="widget_pin_manual">Add the widget manually: touch and hold an empty area of your home screen → Widgets → AirMode.</string>
 </resources>

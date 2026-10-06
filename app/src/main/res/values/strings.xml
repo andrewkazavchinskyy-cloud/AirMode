@@ -59,4 +59,15 @@
     <string name="continue_action">Продолжить</string>
     <string name="service_unavailable">Сервис не запустился. Откройте приложение и повторите.</string>
     <string name="bluetooth_unavailable">На этом устройстве нет Bluetooth</string>
+    <string name="last_known">Последние данные: %1$d%%</string>
+    <string name="battery_waiting">Ждём данные заряда. Откройте кейс рядом с телефоном.</string>
+    <string name="noise_modes">Управление шумом</string>
+    <string name="mode_current">Сейчас: %1$s</string>
+    <string name="mode_switching">Меняем: %1$s</string>
+    <string name="control_connecting">Подключаем управление режимами…</string>
+    <string name="adaptive_hint">Подстраивается под внешний шум.</string>
+    <string name="adaptive_no_reply">Наушники не подтвердили адаптивный режим. Остаётся последний подтверждённый режим.</string>
+    <string name="add_widget">Добавить виджет на главный экран</string>
+    <string name="widget_detail">Заряд и четыре режима прямо на главном экране телефона.</string>
+    <string name="widget_pin_manual">Добавьте виджет вручную: удерживайте пустое место на главном экране → Виджеты → AirMode.</string>
 </resources>

@@ -24,3 +24,13 @@ schema_version:1; mode:quick; panel_size:3; rounds_run:2 per review; provider_co
 
 ## User-reported battery/popup defect,0.1.1
 User tested Pixel10Pro CP41.260831.007.A3 with AirPods5: modes switch, battery/popup absent. Phone is separate; user requested a diagnostic APK. Preserve strict battery parsing, send both documented notification masks once, and capture sanitized debug evidence before claiming hardware fix. Same release key signs diagnostics for an in-place update. Latest user request for a visible popup revises the original DEFAULT channel to a new silent HIGH channel, required for native heads-up; Android channel importance is immutable after creation. Decorated three-component RemoteViews remain within native notification chrome, no overlay permission/activity/fullscreen. Confirmed supported model can show truthful— values until charge arrives; updates retain the original8s deadline. Diagnostic test values are labelled and never written to Repository.
+
+## Actual hardware report and launcher widget, 0.1.2
+
+A distinct quick Council reviewed the new evidence and explicit launcher-widget request: Feynman weight 1.5, Ada 1.0, Socrates 1.0, two rounds, three live seats, one inherited model/provider. All retained FIX_APPLY at medium confidence, weighted 2.625/3.5; no dealbreakers. Agreement does not establish hardware correctness.
+
+The report includes actual AAP left 48 / right 61 / case 100 packets and later case status 4 with level 00/FF. This proves 100 came over the wire; the later claimed 50 is not in this report. Fix deterministic availability/cache arbitration and retain history explicitly. A separate metadata cache prevents unchanged system values acquiring a new timestamp from merged state. Use native RemoteViews rather than an additional widget framework, and revalidate a live supported session for every cold command.
+
+One documented 4d FF declaration is sent on the first explicit Adaptive request in a proven ANC session, before the mode write; initial battery subscriptions are not delayed. This is a bounded compatibility trial, not an AirPods5-qualified or CA-neutral claim. Public notes associate the mask with Adaptive and CA during audio. Do not send CA-setting writes or expose CA controls. Only incoming mode 4 confirms Adaptive. Preserve the 400 ms write interval, one retry and 1.5 s deadline.
+
+Kill criteria: unsupported identity, unconfirmed mode, unexpected CA/audio behavior, session instability or broader privileges required. Stop further capability trials if unrelated behavior changes and retain the known three-mode path. Exact firmware/Pixel-build retesting remains required. Battery state is process-local; elapsed timestamps are never restored across reboot as fresh observations.

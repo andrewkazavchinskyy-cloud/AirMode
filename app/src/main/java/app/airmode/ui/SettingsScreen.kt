@@ -22,7 +22,7 @@ import app.airmode.domain.Mode
 fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
                    onPopup: (Boolean) -> Unit, onPersistent: (Boolean) -> Unit,
                    onAutoStart: (Boolean) -> Unit, onModes: (Set<Mode>) -> Unit,
-                   onLanguage: (String) -> Unit, onAddTile: () -> Unit, onRepository: () -> Unit,
+                   onLanguage: (String) -> Unit, onAddTile: () -> Unit, onAddWidget: () -> Unit, onRepository: () -> Unit,
                    onDiagnostics: () -> Unit = {}) {
     var versionTaps by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -56,7 +56,18 @@ fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
                     }
                 }
             } else Text(stringResource(R.string.no_anc))
-            FilledTonalButton(onClick = onAddTile, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_tile)) }
+            FilledTonalButton(onClick = onAddTile, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Icon(painterResource(R.drawable.ic_noise_anc), contentDescription = null, Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_tile))
+            }
+            FilledTonalButton(onClick = onAddWidget, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Icon(painterResource(R.drawable.ic_airmode), contentDescription = null, Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_widget))
+            }
+            Text(stringResource(R.string.widget_detail), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.language), style = MaterialTheme.typography.titleMedium)

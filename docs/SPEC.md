@@ -14,9 +14,17 @@ User supplied the AirMode PRD on 2026-10-06, then required current stable/beta G
 - ACL/A2DP/HEADSET discovery, one connected pair, renamed candidates via metadata/Apple accessory services, protocol model proof before any mode write.
 - 4s BLE windows ≥15s apart on connection/open; socket closes on disconnect, FGS stops30s later.
 - BOOT_COMPLETED only after onboarding + autostart + observed connected headphone; background restriction yields actionable error.
-- No Pro/Max/older/Beats mode writes, head gestures, auto pause, extra screens, widgets, themes, cloud, ads, payments, account, root, Xposed runtime or VendorID modification.
+- No Pro/Max/older/Beats mode writes, head gestures, auto pause, extra screens, themes, cloud, ads, payments, account, root, Xposed runtime or VendorID modification.
 - Independent protocol implementation. Public packet facts cited; no companion-app source copied.
 - Latest OS/beta compatibility is tested per exact build, not inferred from Pixel name or guaranteed for future releases.
 
 ## Release gate
-Unit tests and installable signed release are necessary. Physical AirPods acoustic confirmation, battery truth, reconnect/reboot/tile/stem update and Pixel8 coldstart<1s require hardware. User confirmed hardware unavailable; never mark those verified. docs/VERIFICATION.md is the evidence ledger.
+Unit tests and installable signed release are necessary. Physical AirPods acoustic confirmation, battery truth, reconnect/reboot/tile/stem update and Pixel8 coldstart<1s require hardware. The user now supplied a sanitized report from their separate phone; it confirms received battery packets, not independent percentage accuracy or the full checklist. docs/VERIFICATION.md is the evidence ledger.
+
+## Latest user revision: 0.1.2
+
+The user explicitly requested a home-screen widget, overriding the original no-widget restriction. Native RemoteViews provide three battery components and direct access to the four modes through the same foreground service and live protocol/model guards. Cached widget text cannot authorize a command.
+
+Unavailable components immediately show —; retained percentages are labelled last-known and keep their original observation time. Android metadata is shown as last-known even on first cache read, and tracked independently and cannot overwrite a present live protocol reading. Popup subscriptions remain immediate and updates keep the original 8-second deadline.
+
+Adaptive capability negotiation is attempted once per live ANC session, only after explicit Adaptive selection. No CA-setting command or UI is added. The documented capability mask has broader effects on other firmware; physical retesting must confirm mode 4 and absence of unrelated behavior changes. No success is inferred from transmitting capabilities.

@@ -11,6 +11,19 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModeRequestTest {
+    @Test fun fastSecondRequestCanWaitForPhysicalRateLimitWithoutBeingLost() = runTest {
+        delay(100) // Previous request was acknowledged quickly; its write was at t=0.
+        val sends = mutableListOf<Long>()
+        var pending = true
+        launch { delay(350); pending = false }
+        assertFalse(sendModeRequest({
+            delay(300) // Native Session spaces actual mode writes at least 400 ms apart.
+            sends += testScheduler.currentTime
+        }, { pending }, { testScheduler.currentTime }))
+        assertEquals(listOf(400L), sends)
+        assertEquals(800L, testScheduler.currentTime)
+    }
+
     @Test fun noAcknowledgementRetriesOnceAndExpiresAt1500() = runTest {
         val sends = mutableListOf<Long>()
         assertTrue(sendModeRequest({ sends += testScheduler.currentTime }, { true }, { testScheduler.currentTime }))

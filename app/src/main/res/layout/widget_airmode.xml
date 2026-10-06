@@ -1,0 +1,67 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_background">
+    <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/app_name" android:textSize="18sp" android:fontFamily="sans-serif-medium"
+        android:textColor="@color/widget_text" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/no_airpods" android:textSize="12sp" android:textColor="@color/widget_secondary"
+        android:layout_marginTop="2dp" android:maxLines="2" android:ellipsize="end" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="10dp" android:layout_marginBottom="10dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/widget_left_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/battery_left" android:textSize="12sp" android:textColor="@color/widget_secondary" />
+            <TextView android:id="@+id/widget_left_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="—" android:textSize="26sp" android:fontFamily="sans-serif-medium" android:textColor="@color/widget_text" />
+            <TextView android:id="@+id/widget_left_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="16dp"
+                android:textSize="12sp" android:textColor="@color/widget_secondary" android:gravity="center"
+                android:maxLines="1" android:ellipsize="end" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/widget_case_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/battery_case" android:textSize="12sp" android:textColor="@color/widget_secondary" />
+            <TextView android:id="@+id/widget_case_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="—" android:textSize="26sp" android:fontFamily="sans-serif-medium" android:textColor="@color/widget_text" />
+            <TextView android:id="@+id/widget_case_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="16dp"
+                android:textSize="12sp" android:textColor="@color/widget_secondary" android:gravity="center"
+                android:maxLines="1" android:ellipsize="end" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/widget_right_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/battery_right" android:textSize="12sp" android:textColor="@color/widget_secondary" />
+            <TextView android:id="@+id/widget_right_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="—" android:textSize="26sp" android:fontFamily="sans-serif-medium" android:textColor="@color/widget_text" />
+            <TextView android:id="@+id/widget_right_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="16dp"
+                android:textSize="12sp" android:textColor="@color/widget_secondary" android:gravity="center"
+                android:maxLines="1" android:ellipsize="end" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:layout_marginTop="4dp">
+        <Button android:id="@+id/widget_off" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginStart="2dp" android:layout_marginEnd="2dp"
+            android:background="@drawable/widget_mode" android:text="@string/mode_off"
+            android:textColor="@color/widget_text" android:textSize="12sp" android:fontFamily="sans-serif-medium"
+            android:gravity="center" android:textAllCaps="false" android:padding="0dp" android:maxLines="1" android:ellipsize="end" android:clickable="true" />
+        <Button android:id="@+id/widget_anc" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginStart="2dp" android:layout_marginEnd="2dp"
+            android:background="@drawable/widget_mode" android:text="@string/mode_anc"
+            android:textColor="@color/widget_text" android:textSize="12sp" android:fontFamily="sans-serif-medium"
+            android:gravity="center" android:textAllCaps="false" android:padding="0dp" android:maxLines="1" android:ellipsize="end" android:clickable="true" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:layout_marginTop="4dp">
+        <Button android:id="@+id/widget_transparency" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginStart="2dp" android:layout_marginEnd="2dp"
+            android:background="@drawable/widget_mode" android:text="@string/mode_transparency"
+            android:textColor="@color/widget_text" android:textSize="12sp" android:fontFamily="sans-serif-medium"
+            android:gravity="center" android:textAllCaps="false" android:padding="0dp" android:maxLines="1" android:ellipsize="end" android:clickable="true" />
+        <Button android:id="@+id/widget_adaptive" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginStart="2dp" android:layout_marginEnd="2dp"
+            android:background="@drawable/widget_mode" android:text="@string/mode_adaptive"
+            android:textColor="@color/widget_text" android:textSize="12sp" android:fontFamily="sans-serif-medium"
+            android:gravity="center" android:textAllCaps="false" android:padding="0dp" android:maxLines="1" android:ellipsize="end" android:clickable="true" />
+    </LinearLayout>
+</LinearLayout>

@@ -32,6 +32,7 @@ class Session(
     private val started = AtomicBoolean(false)
     private val ready = AtomicBoolean(false)
     private val ancConfirmed = AtomicBoolean(false)
+    private val adaptiveDeclared = AtomicBoolean(false)
     private val writes = Mutex()
     private var lastModeWrite = -400L // Accessed only while holding writes.
     private var reader: Job? = null
@@ -92,6 +93,8 @@ class Session(
             }
             val event = AapProtocol.parse(packet, SystemClock.elapsedRealtime())
             ProtocolDiagnostics.packet(packet, event)
+            if (packet.size >= 6 && packet.take(6).toByteArray().contentEquals(byteArrayOf(4, 0, 4, 0, 0x2B, 0)))
+                ProtocolDiagnostics.note("capability response received; mode=4 confirmation still required")
             if (event == null) continue
             if (event is ProtocolEvent.Model) ancConfirmed.set(ModelId.fromNumber(event.number)?.anc == true)
             if (ready.compareAndSet(false, true)) onEvent(ProtocolEvent.Ready)
@@ -101,6 +104,11 @@ class Session(
 
     suspend fun writeMode(mode: Mode) {
         check(ready.get() && ancConfirmed.get() && !closed.get()) { "Supported ANC session required" }
+        // Declare once, only for a user-selected Adaptive mode. Do not delay initial
+        // battery subscriptions or write unrelated settings. Ordered writes precede the
+        // mode request; only a matching listening report can confirm the actual mode.
+        if (mode == Mode.ADAPTIVE && adaptiveDeclared.compareAndSet(false, true))
+            send(AapProtocol.adaptiveCapabilities())
         send(AapProtocol.listening(mode), modeWrite = true)
     }
 
@@ -116,6 +124,8 @@ class Session(
                         if (closed.get() || !ancConfirmed.get()) throw IOException("Supported ANC session required")
                         lastModeWrite = SystemClock.elapsedRealtime()
                     }
+                    if (modeWrite) Mode.fromCode(packet.u(7))?.let(ProtocolDiagnostics::txListening)
+                    if (packet.u(4) == 0x4D) ProtocolDiagnostics.txCapabilities(0xFF)
                     active.outputStream.write(packet)
                     active.outputStream.flush()
                 }

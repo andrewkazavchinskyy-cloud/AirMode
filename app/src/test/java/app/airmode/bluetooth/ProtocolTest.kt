@@ -1,10 +1,11 @@
 package app.airmode.bluetooth
 
 import app.airmode.domain.Mode
+import app.airmode.domain.BatterySource
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Synthetic fixtures made from public field definitions, NOT captures from supported hardware. */
+/** Synthetic fixtures use public fields; tests explicitly label the user-provided hardware captures. */
 class ProtocolTest {
     @Test fun exactSupportedModelsOnly() {
         val groups = listOf(
@@ -74,7 +75,52 @@ class ProtocolTest {
                 as ProtocolEvent.Batteries
             assertNull(event.battery.left.percent)
             assertEquals(0L, event.battery.left.updatedAt)
+            assertFalse(event.battery.left.available)
+            assertEquals(BatterySource.PROTOCOL, event.battery.left.source)
+            assertEquals(1000L, event.battery.left.observedAt)
         }
+    }
+
+    @Test fun capturedAirPods5BatteryOrderingAndUnavailableCaseKeepHistoryHonest() {
+        // User-provided AirPods 5 / Pixel 10 Pro CP41.260831.007.A3 debug report.
+        fun battery(packet: String, now: Long) = (AapProtocol.parse(hex(packet), now) as ProtocolEvent.Batteries).battery
+        val live = battery("0400040004000302013d020104013001010801640201", 1000)
+        assertEquals(48, live.left.percent)
+        assertTrue(live.left.charging)
+        assertEquals(61, live.right.percent)
+        assertFalse(live.right.charging)
+        assertEquals(100, live.case.percent)
+        assertTrue(live.case.available)
+        listOf(
+            "04000400040003040130020102013d02010801000401",
+            "0400040004000302013d020104013002010801ff0401",
+        ).forEachIndexed { index, packet ->
+            val observedAt = 2000L + index
+            val incoming = battery(packet, observedAt)
+            assertEquals(48, incoming.left.percent)
+            assertEquals(61, incoming.right.percent)
+            assertNull(incoming.case.percent)
+            assertFalse(incoming.case.available)
+            val merged = live.merge(incoming)
+            assertEquals(100, merged.case.percent)
+            assertFalse(merged.case.available)
+            assertEquals(1000L, merged.case.updatedAt)
+            assertEquals(observedAt, merged.case.observedAt)
+            assertFalse(merged.case.charging)
+        }
+        val charging = battery("0400040004000302013d010104013001010801640201", 3000)
+        assertTrue(charging.left.charging)
+        assertTrue(charging.right.charging)
+        assertEquals(100, charging.case.percent)
+        assertTrue(charging.case.available)
+    }
+
+    @Test fun missingCaseIsDistinctFromExplicitlyUnavailableCase() {
+        val initial = (AapProtocol.parse(hex("0400040004000302013d020104013001010801640201"), 1000)
+            as ProtocolEvent.Batteries).battery
+        val onlyLeft = (AapProtocol.parse(hex("040004000400010401300201"), 2000) as ProtocolEvent.Batteries).battery
+        assertEquals(0L, onlyLeft.case.observedAt)
+        assertEquals(initial.case, initial.merge(onlyLeft).case)
     }
 
     @Test fun batteryRejectsMalformedCountMarkersLevelsAndDuplicates() {
@@ -98,6 +144,22 @@ class ProtocolTest {
         listOf(6 to 0x28, 7 to 0, 7 to 5, 8 to 1).forEach { (offset, value) ->
             assertNull(AapProtocol.parse(valid.copyOf().apply { this[offset] = value.toByte() }, 1000))
         }
+    }
+
+    @Test fun earsRequireExactDocumentedStatesAndCapabilitiesNeverConfirmMode() {
+        for (primary in 0..2) for (secondary in 0..2) {
+            val packet = hex("040004000600") + byteArrayOf(primary.toByte(), secondary.toByte())
+            assertEquals(ProtocolEvent.Ears(primary, secondary), AapProtocol.parse(packet, 1000))
+        }
+        val valid = hex("0400040006000002")
+        for (length in 0 until valid.size) assertNull(AapProtocol.parse(valid.copyOf(length), 1000))
+        assertNull(AapProtocol.parse(valid + byteArrayOf(0), 1000))
+        assertNull(AapProtocol.parse(hex("0400040006000300"), 1000))
+        assertNull(AapProtocol.parse(hex("04000400060000ff"), 1000))
+        val capabilities = AapProtocol.adaptiveCapabilities()
+        assertArrayEquals(hex("040004004d00ff00000000000000"), capabilities)
+        assertNull(AapProtocol.parse(capabilities, 1000))
+        assertNull(AapProtocol.parse(hex("040004002b00"), 1000))
     }
 
     @Test fun metadataReadsOnlyDesignatedFields() {
@@ -141,6 +203,10 @@ class ProtocolTest {
         val battery = hex("040004000400010401640101")
         assertTrue(ProtocolDiagnostics.packetSummary(battery, AapProtocol.parse(battery, 1)).contains("battery=040004000400010401640101"))
         assertFalse(ProtocolDiagnostics.packetSummary(battery.copyOf(65), null).contains("battery="))
+        val malformedBattery = hex("040004000400") + "PrivateSerial".toByteArray()
+        assertFalse(ProtocolDiagnostics.packetSummary(malformedBattery, null).contains("50726976617465"))
+        val ears = hex("0400040006000002")
+        assertTrue(ProtocolDiagnostics.packetSummary(ears, AapProtocol.parse(ears, 1)).contains("ears primary=0 secondary=2"))
     }
 
     private fun advert(status: Int, buds: Int, flags: Int) = ByteArray(27).apply {

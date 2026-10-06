@@ -21,6 +21,7 @@ data class DeviceState(
     val bluetoothEnabled: Boolean = true,
     val permissionGranted: Boolean = false,
     val connectionId: Long = 0L,
+    val failedMode: Mode? = null,
 ) {
     val connected get() = connection != ConnectionState.Disconnected
     val canSwitch get() = connection == ConnectionState.SessionReady && model?.anc == true

@@ -28,11 +28,12 @@ class Repository private constructor(private val context: Context) {
     private val rejected = mutableSetOf<String>()
     private val recent = mutableMapOf<String, Long>()
     private var selected: BluetoothDevice? = null
+    private var metadataBattery = Battery()
     private var session: Session? = null
+    private var protocolModelConfirmed = false
     private var generation = 0L
     private var command: Job? = null
     private var requestId = 0L
-    private var lastSend = -400L
     private var lastScan = -15_000L
     private var scanJob: Job? = null
     private var scanCallback: ScanCallback? = null
@@ -108,11 +109,13 @@ class Repository private constructor(private val context: Context) {
         }
         if (preferred.address == selected?.address) {
             val retry = state.value.problem == Problem.SERVICE_UNAVAILABLE ||
-                (retryProtocol && state.value.connection == ConnectionState.ProtocolUnavailable)
+                (retryProtocol && state.value.connection == ConnectionState.ProtocolUnavailable) ||
+                state.value.connection == ConnectionState.ConnectedNoSession
             if (retry && session == null && !connecting) {
                 mutable.value = state.value.copy(connection = ConnectionState.ConnectedNoSession,
                     model = null, mode = null, problem = Problem.MODEL_PENDING)
-                if (AirModeService.start(context)) openSession(preferred)
+                if (AirModeService.foregroundReady) openSession(preferred)
+                else if (AirModeService.start(context)) return
                 else mutable.value = state.value.copy(problem = Problem.SERVICE_UNAVAILABLE)
             }
             return
@@ -124,9 +127,11 @@ class Repository private constructor(private val context: Context) {
         if (model != null) confirmed[preferred.address] = model
         mutable.value = DeviceState(ConnectionState.ConnectedNoSession, preferred.name, model,
             problem = Problem.MODEL_PENDING, permissionGranted = true, bluetoothEnabled = true, connectionId = generation)
+        ProtocolDiagnostics.note("connected pair selected")
         readMetadata(preferred)
         // Session must be owned by the connected-device FGS before opening transport.
-        if (AirModeService.start(context)) openSession(preferred) else mutable.value = mutable.value.copy(problem = Problem.SERVICE_UNAVAILABLE)
+        if (AirModeService.foregroundReady) openSession(preferred)
+        else if (!AirModeService.start(context)) mutable.value = mutable.value.copy(problem = Problem.SERVICE_UNAVAILABLE)
         scanWindow()
     }
     private fun candidate(device: BluetoothDevice): Boolean {
@@ -145,6 +150,7 @@ class Repository private constructor(private val context: Context) {
     private fun openSession(device: BluetoothDevice) {
         if (session != null || connecting) return
         connecting = true
+        protocolModelConfirmed = false
         val token = ++generation
         val current = Session(device, scope, { event -> scope.launch {
             if (token != generation || device.address != selected?.address) return@launch
@@ -158,6 +164,7 @@ class Repository private constructor(private val context: Context) {
                         session?.close(); session = null; connecting = false
                         refresh() // Try the other connected pair after a proven unsupported model.
                     } else {
+                        protocolModelConfirmed = true
                         confirmed[device.address] = model
                         mutable.value = mutable.value.copy(model = model, name = event.name ?: state.value.name, problem = null)
                         updateReady()
@@ -166,10 +173,12 @@ class Repository private constructor(private val context: Context) {
                 is ProtocolEvent.Batteries -> mutable.value = mutable.value.copy(battery = state.value.battery.merge(event.battery))
                 is ProtocolEvent.Listening -> {
                     mutable.value = mutable.value.copy(mode = event.mode)
+                    if (state.value.problem == Problem.NO_REPLY && state.value.failedMode == event.mode)
+                        clearProblem() // A late real report supersedes the earlier timeout.
                     val target = (state.value.connection as? ConnectionState.Switching)?.target
                     // An ACK can arrive before the suspended write resumes. Let that write
                     // finish; cancelling it would close the successful native socket.
-                    if (target == event.mode) mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady, problem = null)
+                    if (target == event.mode) mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady, problem = null, failedMode = null)
                     updateReady()
                 }
                 else -> Unit
@@ -177,6 +186,7 @@ class Repository private constructor(private val context: Context) {
         } }, { scope.launch {
             if (token == generation) {
                 connecting = false; session = null; command?.cancel(); command = null
+                protocolModelConfirmed = false
                 if (state.value.connection != ConnectionState.UnsupportedModel) mutable.value = mutable.value.copy(
                     connection = ConnectionState.ProtocolUnavailable, problem = Problem.PROTOCOL_UNAVAILABLE)
             }
@@ -192,41 +202,43 @@ class Repository private constructor(private val context: Context) {
     }
     private fun updateReady() {
         val s = state.value
-        if (s.model != null && (!s.model.anc || s.mode != null) && s.connection == ConnectionState.ConnectedNoSession) {
+        if (protocolModelConfirmed && s.model != null && (!s.model.anc || s.mode != null) && s.connection == ConnectionState.ConnectedNoSession) {
             connecting = false; mutable.value = s.copy(connection = ConnectionState.SessionReady, problem = null)
         }
     }
     fun switchMode(mode: Mode) {
         scope.launch {
             val s = state.value
-            if (!s.canSwitch || session == null || !hasBluetoothPermission()) return@launch
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastSend < 400) return@launch
+            if (!s.canSwitch || !protocolModelConfirmed || session == null || !hasBluetoothPermission()) return@launch
+            if (s.mode == mode) { clearProblem(); return@launch }
             val token = generation
             val active = session ?: return@launch
             val request = ++requestId
-            mutable.value = s.copy(connection = ConnectionState.Switching(mode), problem = null)
+            mutable.value = s.copy(connection = ConnectionState.Switching(mode), problem = null, failedMode = null)
             command = scope.launch {
                 val unanswered = sendModeRequest(
-                    send = { lastSend = SystemClock.elapsedRealtime(); active.writeMode(mode) },
+                    // Session waits for the physical 400 ms interval instead of silently
+                    // dropping a fast second tap after the previous mode was acknowledged.
+                    send = { active.writeMode(mode) },
                     pending = { token == generation && request == requestId &&
                         (state.value.connection as? ConnectionState.Switching)?.target == mode },
                     now = SystemClock::elapsedRealtime,
                 )
-                if (unanswered) mutable.value = state.value.copy(connection = ConnectionState.SessionReady, problem = Problem.NO_REPLY)
+                if (unanswered) mutable.value = state.value.copy(connection = ConnectionState.SessionReady, problem = Problem.NO_REPLY, failedMode = mode)
+                if (unanswered) ProtocolDiagnostics.note("mode request timed out target=${mode.code}; confirmed=${state.value.mode?.code}")
                 if (request == requestId) command = null
             }
         }
     }
     fun serviceStopped() {
-        generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false
+        generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false; protocolModelConfirmed = false
         if (state.value.connected && state.value.connection != ConnectionState.UnsupportedModel) mutable.value = state.value.copy(
             connection = ConnectionState.ConnectedNoSession, problem = Problem.SERVICE_UNAVAILABLE)
     }
-    fun clearProblem() { mutable.value = mutable.value.copy(problem = null) }
+    fun clearProblem() { mutable.value = mutable.value.copy(problem = null, failedMode = null) }
     private fun disconnect() {
-        generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false
-        selected = null; stopScan()
+        generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false; protocolModelConfirmed = false
+        selected = null; metadataBattery = Battery(); stopScan()
         mutable.value = DeviceState(permissionGranted = hasBluetoothPermission(), bluetoothEnabled = hasBluetoothPermission() && adapter?.isEnabled == true)
     }
     private fun metadata(device: BluetoothDevice, key: Int): ByteArray? = runCatching {
@@ -239,14 +251,14 @@ class Repository private constructor(private val context: Context) {
             val level = metadata(device, key)?.decodeToString()?.toIntOrNull()?.takeIf { it in 0..100 }
             if (level == null) return BatteryReading()
             val charging = metadata(device, chargingKey)?.decodeToString() == "true"
-            // getMetadata returns a cache with no observation timestamp. Reopening the UI
-            // must not make unchanged cached case data appear freshly observed.
-            return if (old.percent == level && old.charging == charging) old else BatteryReading(level, charging, now)
+            return cachedMetadataReading(level, charging, old, now)
         }
         // A single aggregate level has no known left/right attribution and is never duplicated.
         runCatching { BluetoothDevice::class.java.getMethod("getBatteryLevel").invoke(device) }
-        mutable.value = state.value.copy(battery = state.value.battery.merge(Battery(reading(10,13, state.value.battery.left), reading(11,14, state.value.battery.right), reading(12,15, state.value.battery.case))))
-        ProtocolDiagnostics.metadata(state.value.battery.known)
+        val readings = Battery(reading(10,13, metadataBattery.left), reading(11,14, metadataBattery.right), reading(12,15, metadataBattery.case))
+        metadataBattery = metadataBattery.merge(readings)
+        mutable.value = state.value.copy(battery = state.value.battery.merge(readings))
+        ProtocolDiagnostics.metadata(readings)
     }
     private fun scanWindow() {
         val device = selected ?: return
