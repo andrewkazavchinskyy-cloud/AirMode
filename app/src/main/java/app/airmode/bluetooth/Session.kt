@@ -33,6 +33,7 @@ class Session(
     private val ready = AtomicBoolean(false)
     private val ancConfirmed = AtomicBoolean(false)
     private val writes = Mutex()
+    private var lastModeWrite = -400L // Accessed only while holding writes.
     private var reader: Job? = null
     private var timeout: Job? = null
 
@@ -95,16 +96,21 @@ class Session(
 
     suspend fun writeMode(mode: Mode) {
         check(ready.get() && ancConfirmed.get() && !closed.get()) { "Supported ANC session required" }
-        send(AapProtocol.listening(mode))
+        send(AapProtocol.listening(mode), modeWrite = true)
     }
 
-    private suspend fun send(packet: ByteArray): Unit = suspendCancellableCoroutine<Unit> { continuation ->
+    private suspend fun send(packet: ByteArray, modeWrite: Boolean = false): Unit = suspendCancellableCoroutine<Unit> { continuation ->
         continuation.invokeOnCancellation { closeSocket() }
         scope.launch(Dispatchers.IO) {
             try {
                 writes.withLock {
                     val active = socket.get() ?: throw IOException("No control socket")
                     if (closed.get() || packet.size > active.maxTransmitPacketSize) throw IOException("Control socket unavailable")
+                    if (modeWrite) {
+                        delay((lastModeWrite + 400 - SystemClock.elapsedRealtime()).coerceAtLeast(0))
+                        if (closed.get() || !ancConfirmed.get()) throw IOException("Supported ANC session required")
+                        lastModeWrite = SystemClock.elapsedRealtime()
+                    }
                     active.outputStream.write(packet)
                     active.outputStream.flush()
                 }
