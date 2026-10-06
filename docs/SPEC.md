@@ -28,3 +28,11 @@ The user explicitly requested a home-screen widget, overriding the original no-w
 Unavailable components immediately show —; retained percentages are labelled last-known and keep their original observation time. Android metadata is shown as last-known even on first cache read, and tracked independently and cannot overwrite a present live protocol reading. Popup subscriptions remain immediate and updates keep the original 8-second deadline.
 
 Adaptive capability negotiation is attempted once per live ANC session, only after explicit Adaptive selection. No CA-setting command or UI is added. The documented capability mask has broader effects on other firmware; physical retesting must confirm mode 4 and absence of unrelated behavior changes. No success is inferred from transmitting capabilities.
+
+## Latest revision:0.2.0
+
+The user supplied0.1.2 physical diagnostics and reports remaining unknown case battery, other functionality good, requesting prettier native app/widget and all Apple headphones plus Sony. Current implementation expands to all official wireless AirPods families (including Pro/Max), with battery-only older/nonANC models and supported modes per model. Beats/wired EarPods remain unimplemented and cannot be advertised as covered. Sony uses separate experimental native MDR V1/V2, verified service/version/model/capabilities and recognized schemas; unknown families/firmware disable unsupported operations. Sony Adaptive Sound Control is not Apple mode4.
+
+The actual user's Adaptive reply arrives1807ms after write, past the original deadline. Keep visible loading≤1500ms, then neutral awaiting confirmation without optimistic mode; final failure2500ms. Retain≥400ms physical writes and one700ms retry. This explicit hardware-evidence revision supersedes the original immediate1500ms error criterion.
+
+Apple live-session proximity keys may transiently attribute private BLE addresses and decode only known layouts. No keys on disk/in reports; clear on disconnect/session replacement. Reject replay counters/unknown fields. No synthesized case percent or nearby-pair/RSSI inference. Default offline/privacy architecture remains unchanged.

@@ -87,4 +87,24 @@ class BatteryTest {
         val advertisement = Battery(case = BatteryReading(90, false, 121001, source = BatterySource.ADVERTISEMENT))
         assertEquals(advertisement.case, protocol.merge(advertisement).case)
     }
+
+    @Test fun budLinkUnavailabilityCannotHideAnIndependentFreshCaseAdvert() {
+        val case = Battery(case = BatteryReading(51, true, 1000, source = BatterySource.ADVERTISEMENT))
+        val noCaseOnBudLink = Battery(case = BatteryReading(available = false,
+            source = BatterySource.PROTOCOL, observedAt = 2000))
+        assertEquals(case.case, case.merge(noCaseOnBudLink).case)
+        val liveLink = Battery(case = BatteryReading(50, false, 3000, source = BatterySource.PROTOCOL))
+        assertEquals(liveLink.case, case.merge(liveLink).case)
+        val expired = case.merge(noCaseOnBudLink.copy(case = noCaseOnBudLink.case.copy(observedAt = 121001)))
+        assertFalse(expired.case.available)
+        assertEquals(1000L, expired.case.updatedAt)
+    }
+
+    @Test fun sameMillisecondCacheReadDoesNotWithdrawFreshSystemBatteryReport() {
+        val live = Battery(headset = BatteryReading(75, updatedAt = 1000, source = BatterySource.METADATA))
+        val cached = Battery(headset = cachedMetadataReading(75, false, BatteryReading(), 1000))
+        assertEquals(live.headset, live.merge(cached).headset)
+        val changedCache = Battery(headset = cachedMetadataReading(74, false, cached.headset, 2000))
+        assertEquals(live.headset, live.merge(changedCache).headset)
+    }
 }

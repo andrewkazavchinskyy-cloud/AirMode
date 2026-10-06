@@ -24,11 +24,11 @@ class ModeRequestTest {
         assertEquals(800L, testScheduler.currentTime)
     }
 
-    @Test fun noAcknowledgementRetriesOnceAndExpiresAt1500() = runTest {
+    @Test fun noAcknowledgementRetriesOnceAndExpiresAt2500() = runTest {
         val sends = mutableListOf<Long>()
         assertTrue(sendModeRequest({ sends += testScheduler.currentTime }, { true }, { testScheduler.currentTime }))
         assertEquals(listOf(0L, 700L), sends)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(2_500L, testScheduler.currentTime)
     }
 
     @Test fun slowFirstWriteStillLeaves400msBeforeRetry() = runTest {
@@ -40,7 +40,7 @@ class ModeRequestTest {
         }, { true }, { testScheduler.currentTime }))
         assertEquals(listOf(0L, 850L), sends)
         assertEquals(400L, sends.last() - firstCompleted)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(2_500L, testScheduler.currentTime)
     }
 
     @Test fun acknowledgementSkipsRetryAndIsNotReportedAsFailure() = runTest {
@@ -77,28 +77,40 @@ class ModeRequestTest {
         assertTrue(firstCompleted)
         assertEquals(450L, firstFinishedAt)
         assertEquals(listOf(0L, 400L, 1_100L), sends)
-        assertEquals(1_900L, testScheduler.currentTime)
+        assertEquals(2_900L, testScheduler.currentTime)
     }
 
     @Test fun failedWriteDoesNotRetryOrClaimSuccess() = runTest {
         var sends = 0
         assertTrue(sendModeRequest({ sends++; throw IOException("closed") }, { true }, { testScheduler.currentTime }))
         assertEquals(1, sends)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(2_500L, testScheduler.currentTime)
     }
 
     @Test fun firstWriteTimeoutDoesNotRetryAndRemainsBounded() = runTest {
         var sends = 0
         assertTrue(sendModeRequest({ sends++; delay(501) }, { true }, { testScheduler.currentTime }))
         assertEquals(1, sends)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(2_500L, testScheduler.currentTime)
     }
 
     @Test fun retryTimeoutRemainsWithinTotalDeadline() = runTest {
         var sends = 0
         assertTrue(sendModeRequest({ if (++sends == 2) delay(401) }, { true }, { testScheduler.currentTime }))
         assertEquals(2, sends)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(2_500L, testScheduler.currentTime)
+    }
+
+    @Test fun captured1807msResponseStopsSpinnerAt1500WithoutFalseFailure() = runTest {
+        val sends = mutableListOf<Long>()
+        var pending = true
+        var stoppedSpinnerAt = -1L
+        launch { delay(1_807); pending = false }
+        assertFalse(sendModeRequest({ sends += testScheduler.currentTime }, { pending },
+            { testScheduler.currentTime }, { stoppedSpinnerAt = testScheduler.currentTime }))
+        assertEquals(1_500L, stoppedSpinnerAt)
+        assertEquals(listOf(0L, 700L), sends)
+        assertEquals(2_500L, testScheduler.currentTime)
     }
 
     @Test fun cancellationPropagates() = runTest {

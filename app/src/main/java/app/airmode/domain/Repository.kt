@@ -8,6 +8,7 @@ import android.content.*
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
+import app.airmode.BuildConfig
 import app.airmode.bluetooth.*
 import app.airmode.data.SettingsStore
 import app.airmode.service.AirModeService
@@ -27,11 +28,15 @@ class Repository private constructor(private val context: Context) {
     private val confirmed = mutableMapOf<String, ModelId>()
     private val rejected = mutableSetOf<String>()
     private val recent = mutableMapOf<String, Long>()
+    private val sdpRequested = mutableSetOf<String>()
     private var selected: BluetoothDevice? = null
     private var metadataBattery = Battery()
-    private var session: Session? = null
+    private var session: ControlSession? = null
+    private var proximity: AppleProximity? = null
     private var protocolModelConfirmed = false
+    private var transportReady = false
     private var generation = 0L
+    private var pairEpoch = 0L
     private var command: Job? = null
     private var requestId = 0L
     private var lastScan = -15_000L
@@ -53,10 +58,17 @@ class Repository private constructor(private val context: Context) {
                 else @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
             scope.launch {
                 when (intent.action) {
-                    BluetoothDevice.ACTION_ACL_CONNECTED -> device?.let { rejected.remove(it.address); connected[it.address] = it; recent[it.address] = SystemClock.elapsedRealtime() }
-                    BluetoothDevice.ACTION_ACL_DISCONNECTED -> device?.let { connected.remove(it.address) }
+                    BluetoothDevice.ACTION_ACL_CONNECTED -> device?.let { rejected.remove(it.address); sdpRequested.remove(it.address); connected[it.address] = it; recent[it.address] = SystemClock.elapsedRealtime() }
+                    BluetoothDevice.ACTION_ACL_DISCONNECTED -> device?.let { connected.remove(it.address); sdpRequested.remove(it.address) }
                     BluetoothDevice.ACTION_BOND_STATE_CHANGED -> if (device?.bondState != BluetoothDevice.BOND_BONDED) device?.let { confirmed.remove(it.address) }
-                    "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED" -> if (device != null && device.address == selected?.address) readMetadata(device)
+                    "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED" -> if (device != null && device.address == selected?.address) {
+                        readMetadata(device)
+                        // A live aggregate report belongs to a headset, never both earbuds.
+                        val level = intent.getIntExtra("android.bluetooth.device.extra.BATTERY_LEVEL", -1)
+                        if (state.value.model?.batteryForm == BatteryForm.HEADPHONES && level in 0..100)
+                            mutable.value = state.value.copy(battery = state.value.battery.merge(Battery(
+                                headset = BatteryReading(level, updatedAt = SystemClock.elapsedRealtime(), source = BatterySource.METADATA))))
+                    }
                 }
                 refresh()
             }
@@ -142,6 +154,13 @@ class Repository private constructor(private val context: Context) {
         val name = device.name.orEmpty()
         // Names select candidates only; never authorize noise writes.
         if (name.contains("AirPods", ignoreCase = true)) return true
+        if (SonySession.serviceUuid(device) != null) return true
+        if (listOf("WH-", "WF-", "WI-", "MDR-", "LinkBuds").any { name.startsWith(it, true) } ||
+            metadata(device, 0)?.decodeToString()?.contains("Sony", true) == true) {
+            // Only SDP service discovery; a name never authorizes a vendor command.
+            if (sdpRequested.add(device.address)) runCatching { device.fetchUuidsWithSdp() }
+            return SonySession.serviceUuid(device) != null
+        }
         // A bonded renamed audio accessory exposing Apple's accessory SDP UUID can be queried
         // for identity. The UUID is not proof of a supported model.
         val audio = device.bluetoothClass?.majorDeviceClass == BluetoothClass.Device.Major.AUDIO_VIDEO
@@ -151,23 +170,37 @@ class Repository private constructor(private val context: Context) {
         if (session != null || connecting) return
         connecting = true
         protocolModelConfirmed = false
+        transportReady = false
         val token = ++generation
-        val current = Session(device, scope, { event -> scope.launch {
-            if (token != generation || device.address != selected?.address) return@launch
+        fun identity(model: ModelId?, name: String?) {
+            if (model == null) {
+                confirmed.remove(device.address)
+                rejected.add(device.address)
+                mutable.value = mutable.value.copy(connection = ConnectionState.UnsupportedModel, model = null,
+                    mode = null, pendingMode = null, controlBusy = false, battery = Battery(), problem = null)
+                session?.close(); session = null; connecting = false
+                proximity?.close(); proximity = null
+                refresh()
+            } else {
+                protocolModelConfirmed = true
+                confirmed[device.address] = model
+                mutable.value = mutable.value.copy(model = model, name = name ?: state.value.name, problem = null)
+                updateReady()
+            }
+        }
+        val events: (ProtocolEvent) -> Unit = { event -> scope.launch {
+            if (token != generation || device.address != selected?.address) {
+                if (event is ProtocolEvent.ProximityKeys) event.keys.close()
+                return@launch
+            }
             when (event) {
-                is ProtocolEvent.Model -> {
-                    val model = ModelId.fromNumber(event.number)
-                    if (model == null) {
-                        confirmed.remove(device.address)
-                        rejected.add(device.address)
-                        mutable.value = mutable.value.copy(connection = ConnectionState.UnsupportedModel, model = null, mode = null, battery = Battery(), problem = null)
-                        session?.close(); session = null; connecting = false
-                        refresh() // Try the other connected pair after a proven unsupported model.
-                    } else {
-                        protocolModelConfirmed = true
-                        confirmed[device.address] = model
-                        mutable.value = mutable.value.copy(model = model, name = event.name ?: state.value.name, problem = null)
-                        updateReady()
+                is ProtocolEvent.Model -> identity(ModelId.fromNumber(event.number), event.name)
+                is ProtocolEvent.Identity -> identity(event.model, event.name)
+                is ProtocolEvent.ProximityKeys -> {
+                    if (!protocolModelConfirmed || state.value.model?.vendor != DeviceVendor.APPLE) event.keys.close()
+                    else {
+                        proximity?.close(); proximity = event.keys
+                        if (BuildConfig.DEBUG) ProtocolDiagnostics.note("proximity keys received; identity=${event.keys.hasIrk} decryption=${event.keys.hasEncryption}")
                     }
                 }
                 is ProtocolEvent.Batteries -> mutable.value = mutable.value.copy(battery = state.value.battery.merge(event.battery))
@@ -175,25 +208,34 @@ class Repository private constructor(private val context: Context) {
                     mutable.value = mutable.value.copy(mode = event.mode)
                     if (state.value.problem == Problem.NO_REPLY && state.value.failedMode == event.mode)
                         clearProblem() // A late real report supersedes the earlier timeout.
-                    val target = (state.value.connection as? ConnectionState.Switching)?.target
+                    val target = state.value.pendingMode
                     // An ACK can arrive before the suspended write resumes. Let that write
                     // finish; cancelling it would close the successful native socket.
-                    if (target == event.mode) mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady, problem = null, failedMode = null)
+                    if (target == event.mode) mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady,
+                        pendingMode = null, problem = null, failedMode = null)
                     updateReady()
                 }
+                ProtocolEvent.Ready -> { transportReady = true; updateReady() }
+                is ProtocolEvent.ControlBusy -> mutable.value = mutable.value.copy(controlBusy = event.busy)
                 else -> Unit
             }
-        } }, { scope.launch {
+        } }
+        val closed: () -> Unit = { scope.launch {
             if (token == generation) {
                 connecting = false; session = null; command?.cancel(); command = null
+                proximity?.close(); proximity = null
                 protocolModelConfirmed = false
+                transportReady = false
                 if (state.value.connection != ConnectionState.UnsupportedModel) mutable.value = mutable.value.copy(
-                    connection = ConnectionState.ProtocolUnavailable, problem = Problem.PROTOCOL_UNAVAILABLE)
+                    connection = ConnectionState.ProtocolUnavailable, pendingMode = null, controlBusy = false, problem = Problem.PROTOCOL_UNAVAILABLE)
             }
-        } })
+        } }
+        val current: ControlSession = if (SonySession.serviceUuid(device) != null)
+            SonySession(device, scope, events, closed) else Session(device, scope, events, closed)
         session = current; current.start()
         scope.launch {
-            delay(6000)
+            // Sony negotiates identity, capabilities and battery requests on one ordered channel.
+            delay(if (current is SonySession) 10_000 else 6000)
             if (token == generation && state.value.connection == ConnectionState.ConnectedNoSession) {
                 current.close(); session = null; connecting = false
                 mutable.value = mutable.value.copy(connection = ConnectionState.ProtocolUnavailable, problem = Problem.PROTOCOL_UNAVAILABLE)
@@ -202,42 +244,53 @@ class Repository private constructor(private val context: Context) {
     }
     private fun updateReady() {
         val s = state.value
-        if (protocolModelConfirmed && s.model != null && (!s.model.anc || s.mode != null) && s.connection == ConnectionState.ConnectedNoSession) {
+        if (transportReady && protocolModelConfirmed && s.model != null &&
+            (s.model.supportedModes.isEmpty() || s.mode != null) && s.connection == ConnectionState.ConnectedNoSession) {
             connecting = false; mutable.value = s.copy(connection = ConnectionState.SessionReady, problem = null)
         }
     }
     fun switchMode(mode: Mode) {
         scope.launch {
             val s = state.value
-            if (!s.canSwitch || !protocolModelConfirmed || session == null || !hasBluetoothPermission()) return@launch
+            if (!s.canSwitch || !protocolModelConfirmed || session == null || !hasBluetoothPermission() || mode !in s.model!!.supportedModes) return@launch
             if (s.mode == mode) { clearProblem(); return@launch }
             val token = generation
             val active = session ?: return@launch
             val request = ++requestId
-            mutable.value = s.copy(connection = ConnectionState.Switching(mode), problem = null, failedMode = null)
+            mutable.value = s.copy(connection = ConnectionState.Switching(mode), pendingMode = mode, problem = null, failedMode = null)
             command = scope.launch {
                 val unanswered = sendModeRequest(
                     // Session waits for the physical 400 ms interval instead of silently
                     // dropping a fast second tap after the previous mode was acknowledged.
                     send = { active.writeMode(mode) },
                     pending = { token == generation && request == requestId &&
-                        (state.value.connection as? ConnectionState.Switching)?.target == mode },
+                        state.value.pendingMode == mode },
                     now = SystemClock::elapsedRealtime,
+                    awaitingConfirmation = {
+                        if (token == generation && request == requestId && state.value.pendingMode == mode)
+                            mutable.value = state.value.copy(connection = ConnectionState.SessionReady)
+                    },
                 )
-                if (unanswered) mutable.value = state.value.copy(connection = ConnectionState.SessionReady, problem = Problem.NO_REPLY, failedMode = mode)
-                if (unanswered) ProtocolDiagnostics.note("mode request timed out target=${mode.code}; confirmed=${state.value.mode?.code}")
+                if (unanswered) mutable.value = state.value.copy(connection = ConnectionState.SessionReady,
+                    pendingMode = null, problem = Problem.NO_REPLY, failedMode = mode)
+                if (unanswered && BuildConfig.DEBUG) ProtocolDiagnostics.note("mode request timed out target=${mode.code}; confirmed=${state.value.mode?.code}")
                 if (request == requestId) command = null
             }
         }
     }
     fun serviceStopped() {
         generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false; protocolModelConfirmed = false
+        transportReady = false
+        proximity?.close(); proximity = null
         if (state.value.connected && state.value.connection != ConnectionState.UnsupportedModel) mutable.value = state.value.copy(
-            connection = ConnectionState.ConnectedNoSession, problem = Problem.SERVICE_UNAVAILABLE)
+            connection = ConnectionState.ConnectedNoSession, pendingMode = null, controlBusy = false, problem = Problem.SERVICE_UNAVAILABLE)
     }
     fun clearProblem() { mutable.value = mutable.value.copy(problem = null, failedMode = null) }
     private fun disconnect() {
+        pairEpoch++
         generation++; command?.cancel(); command = null; session?.close(); session = null; connecting = false; protocolModelConfirmed = false
+        transportReady = false
+        proximity?.close(); proximity = null
         selected = null; metadataBattery = Battery(); stopScan()
         mutable.value = DeviceState(permissionGranted = hasBluetoothPermission(), bluetoothEnabled = hasBluetoothPermission() && adapter?.isEnabled == true)
     }
@@ -253,31 +306,45 @@ class Repository private constructor(private val context: Context) {
             val charging = metadata(device, chargingKey)?.decodeToString() == "true"
             return cachedMetadataReading(level, charging, old, now)
         }
-        // A single aggregate level has no known left/right attribution and is never duplicated.
-        runCatching { BluetoothDevice::class.java.getMethod("getBatteryLevel").invoke(device) }
-        val readings = Battery(reading(10,13, metadataBattery.left), reading(11,14, metadataBattery.right), reading(12,15, metadataBattery.case))
+        // Cached aggregate data has no known left/right attribution and is never duplicated.
+        val aggregate = runCatching { BluetoothDevice::class.java.getMethod("getBatteryLevel").invoke(device) as? Int }.getOrNull()
+        val headset = if (state.value.model?.batteryForm == BatteryForm.HEADPHONES && aggregate in 0..100)
+            cachedMetadataReading(aggregate!!, false, metadataBattery.headset, now) else BatteryReading()
+        val readings = Battery(reading(10,13, metadataBattery.left), reading(11,14, metadataBattery.right), reading(12,15, metadataBattery.case), headset)
         metadataBattery = metadataBattery.merge(readings)
         mutable.value = state.value.copy(battery = state.value.battery.merge(readings))
         ProtocolDiagnostics.metadata(readings)
     }
     private fun scanWindow() {
         val device = selected ?: return
+        if (state.value.model?.vendor == DeviceVendor.SONY || SonySession.serviceUuid(device) != null) return
         if (!hasBluetoothPermission() || scanJob?.isActive == true || SystemClock.elapsedRealtime() - lastScan < 15000) return
         val scanner = adapter?.bluetoothLeScanner ?: return
         lastScan = SystemClock.elapsedRealtime()
-        val token = generation
+        // A control session can start/reconnect during this same four-second scan.
+        // Only changing the selected pair invalidates its advertisement callbacks.
+        val token = pairEpoch
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 // Random BLE addresses cannot safely be attributed by RSSI/name alone.
-                if (token != generation) return
+                if (token != pairEpoch || selected?.address != device.address) return
                 val bytes = result.scanRecord?.getManufacturerSpecificData(0x004c) ?: return
-                val matched = result.device.address == device.address
-                val battery = if (matched) AdvertParser.parse(bytes, SystemClock.elapsedRealtime()) else null
-                ProtocolDiagnostics.advertisement(matched, battery != null)
+                val direct = result.device.address == device.address
+                val keys = proximity
+                val battery = keys?.decode(result.device.address, bytes, SystemClock.elapsedRealtime())
+                    ?: if (direct) AdvertParser.parse(bytes, SystemClock.elapsedRealtime()) else null
+                val matched = direct || keys?.matchesAddress(result.device.address) == true || battery != null
+                ProtocolDiagnostics.advertisement(matched, battery != null,
+                    bytes.size == 19 && bytes.u(0) == 7 && bytes.u(1) == 0x11)
                 if (battery == null) return
-                scope.launch { if (token == generation) mutable.value = state.value.copy(battery = state.value.battery.merge(battery)) }
+                if (BuildConfig.DEBUG) ProtocolDiagnostics.note("BLE battery accepted; case=${ProtocolDiagnostics.readingSummary(battery.case)}")
+                scope.launch { if (token == pairEpoch && selected?.address == device.address)
+                    mutable.value = state.value.copy(battery = state.value.battery.merge(battery)) }
             }
-            override fun onScanFailed(errorCode: Int) { ProtocolDiagnostics.note("BLE scan failed code=$errorCode"); scope.launch { stopScan() } }
+            override fun onScanFailed(errorCode: Int) {
+                if (BuildConfig.DEBUG) ProtocolDiagnostics.note("BLE scan failed code=$errorCode")
+                scope.launch { stopScan() }
+            }
         }
         scanCallback = callback
         try {

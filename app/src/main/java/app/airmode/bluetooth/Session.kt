@@ -26,19 +26,21 @@ class Session(
     private val scope: CoroutineScope,
     private val onEvent: (ProtocolEvent) -> Unit,
     private val onClosed: () -> Unit,
-) {
+) : ControlSession {
     private val socket = AtomicReference<BluetoothSocket?>()
     private val closed = AtomicBoolean(false)
     private val started = AtomicBoolean(false)
     private val ready = AtomicBoolean(false)
-    private val ancConfirmed = AtomicBoolean(false)
+    private val liveModel = AtomicReference<ModelId?>()
+    private val keysRequested = AtomicBoolean(false)
+    private val proximity = AtomicReference<AppleProximity?>()
     private val adaptiveDeclared = AtomicBoolean(false)
     private val writes = Mutex()
     private var lastModeWrite = -400L // Accessed only while holding writes.
     private var reader: Job? = null
     private var timeout: Job? = null
 
-    fun start() {
+    override fun start() {
         if (closed.get() || !started.compareAndSet(false, true)) return
         // Closing the socket unblocks native connect/read even when thread interruption does not.
         reader = scope.launch {
@@ -95,24 +97,35 @@ class Session(
             ProtocolDiagnostics.packet(packet, event)
             if (packet.size >= 6 && packet.take(6).toByteArray().contentEquals(byteArrayOf(4, 0, 4, 0, 0x2B, 0)))
                 ProtocolDiagnostics.note("capability response received; mode=4 confirmation still required")
+            if (packet.getOrNull(4)?.toInt()?.and(255) == 0x31) { packet.fill(0); buffer.fill(0, 0, count) }
             if (event == null) continue
-            if (event is ProtocolEvent.Model) ancConfirmed.set(ModelId.fromNumber(event.number)?.anc == true)
+            if (event is ProtocolEvent.Model)
+                liveModel.set(ModelId.fromNumber(event.number)?.takeIf { it.vendor == DeviceVendor.APPLE })
+            if (event is ProtocolEvent.ProximityKeys) {
+                if (!keysRequested.get() || liveModel.get() == null || closed.get()) { event.keys.close(); continue }
+                if (!proximity.compareAndSet(null, event.keys)) { event.keys.close(); continue }
+                if (closed.get()) { proximity.getAndSet(null)?.close(); continue }
+            }
             if (ready.compareAndSet(false, true)) onEvent(ProtocolEvent.Ready)
             onEvent(event)
+            if (event is ProtocolEvent.Model && liveModel.get() != null && keysRequested.compareAndSet(false, true)) {
+                send(AapProtocol.requestProximityKeys())
+                ProtocolDiagnostics.note("proximity keys requested")
+            }
         }
     }
 
-    suspend fun writeMode(mode: Mode) {
-        check(ready.get() && ancConfirmed.get() && !closed.get()) { "Supported ANC session required" }
+    override suspend fun writeMode(mode: Mode) {
+        check(ready.get() && mode in liveModel.get()?.supportedModes.orEmpty() && !closed.get()) { "Supported live mode required" }
         // Declare once, only for a user-selected Adaptive mode. Do not delay initial
         // battery subscriptions or write unrelated settings. Ordered writes precede the
         // mode request; only a matching listening report can confirm the actual mode.
         if (mode == Mode.ADAPTIVE && adaptiveDeclared.compareAndSet(false, true))
-            send(AapProtocol.adaptiveCapabilities())
+            send(AapProtocol.adaptiveCapabilities(), capabilityWrite = true)
         send(AapProtocol.listening(mode), modeWrite = true)
     }
 
-    private suspend fun send(packet: ByteArray, modeWrite: Boolean = false): Unit = suspendCancellableCoroutine<Unit> { continuation ->
+    private suspend fun send(packet: ByteArray, modeWrite: Boolean = false, capabilityWrite: Boolean = false): Unit = suspendCancellableCoroutine<Unit> { continuation ->
         continuation.invokeOnCancellation { closeSocket() }
         scope.launch(Dispatchers.IO) {
             try {
@@ -121,7 +134,13 @@ class Session(
                     if (closed.get() || packet.size > active.maxTransmitPacketSize) throw IOException("Control socket unavailable")
                     if (modeWrite) {
                         delay((lastModeWrite + 400 - SystemClock.elapsedRealtime()).coerceAtLeast(0))
-                        if (closed.get() || !ancConfirmed.get()) throw IOException("Supported ANC session required")
+                    }
+                    if (modeWrite || capabilityWrite) {
+                        val mode = if (capabilityWrite) Mode.ADAPTIVE else Mode.fromCode(packet.u(7))
+                        if (closed.get() || mode == null || mode !in liveModel.get()?.supportedModes.orEmpty())
+                            throw IOException("Supported live mode required")
+                    }
+                    if (modeWrite) {
                         lastModeWrite = SystemClock.elapsedRealtime()
                     }
                     if (modeWrite) Mode.fromCode(packet.u(7))?.let(ProtocolDiagnostics::txListening)
@@ -136,7 +155,7 @@ class Session(
         }
     }
 
-    fun close() {
+    override fun close() {
         closeSocket()
         reader?.cancel()
         finish()
@@ -144,6 +163,8 @@ class Session(
 
     private fun closeSocket() {
         closed.set(true)
+        liveModel.set(null)
+        proximity.getAndSet(null)?.close()
         runCatching { socket.getAndSet(null)?.close() }
     }
 

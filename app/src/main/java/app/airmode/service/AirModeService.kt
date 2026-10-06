@@ -11,8 +11,10 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.widget.RemoteViews
+import android.view.View
 import app.airmode.BuildConfig
 import app.airmode.bluetooth.ProtocolDiagnostics
+import app.airmode.bluetooth.BatteryForm
 import app.airmode.MainActivity
 import app.airmode.R
 import app.airmode.data.Settings
@@ -72,9 +74,9 @@ class AirModeService : Service() {
                 try {
                     // Never authorize a command from the launcher view or a persisted model.
                     repository.retryControl()
-                    val ready = withTimeoutOrNull(5_000) {
+                    val ready = withTimeoutOrNull(10_000) {
                         repository.state.first { it.canSwitch || it.connection == ConnectionState.UnsupportedModel ||
-                            it.connection == ConnectionState.ProtocolUnavailable || it.model?.anc == false }
+                            it.connection == ConnectionState.ProtocolUnavailable || it.model?.supportedModes?.isEmpty() == true }
                     }
                     if (ready?.canSwitch == true && hasBluetoothPermission()) repository.switchMode(mode)
                 } finally {
@@ -100,19 +102,19 @@ class AirModeService : Service() {
 
     private fun visualBattery(state: DeviceState): List<Any?> {
         val now = SystemClock.elapsedRealtime()
-        return listOf(state.battery.left, state.battery.case, state.battery.right).flatMap {
+        return listOf(state.battery.left, state.battery.case, state.battery.right, state.battery.headset).flatMap {
             listOf(it.percent, it.available, it.charging, it.stale(now))
         }
     }
 
     private fun update(state: DeviceState, settings: Settings) {
         val tileContent = listOf(state.connected, state.connection == ConnectionState.UnsupportedModel,
-            state.connection == ConnectionState.ProtocolUnavailable, state.canSwitch, state.model?.anc, state.mode, settings.language)
+            state.connection == ConnectionState.ProtocolUnavailable, state.canSwitch, state.model?.supportedModes, state.mode, settings.language)
         if (tileContent != lastTileContent) { lastTileContent = tileContent; NoiseTileService.refresh(this) }
         AirModeWidgetProvider.update(this, state, settings)
         staleUpdate?.cancel()
         val now = SystemClock.elapsedRealtime()
-        val nextStale = listOf(state.battery.left, state.battery.case, state.battery.right)
+        val nextStale = listOf(state.battery.left, state.battery.case, state.battery.right, state.battery.headset)
             .filter { it.percent != null && it.available && !it.stale(now) }
             .minOfOrNull { it.updatedAt + 120_001 }
         if (state.connected && nextStale != null) staleUpdate = scope.launch {
@@ -140,7 +142,7 @@ class AirModeService : Service() {
         if (connectionId != state.connectionId) {
             popupShown = false; popupDeadline = 0L; connectionId = state.connectionId; lastPopupContent = null
         }
-        val foregroundContent = listOf(state.name, settings.persistent, settings.language) +
+        val foregroundContent = listOf(state.name, state.model?.batteryForm, settings.persistent, settings.language) +
             if (settings.persistent) visualBattery(state) else emptyList()
         if (!foreground) { if (!ensureForeground(state, settings)) return }
         else if (foregroundContent != lastForegroundContent) notifications.notify(FOREGROUND_ID, notification(state, settings))
@@ -150,12 +152,12 @@ class AirModeService : Service() {
         if (settings.popup && (state.model != null || state.battery.known) && canNotify(this)) {
             val firstPopup = !popupShown
             if (firstPopup) { popupShown = true; popupDeadline = now + 8_000 }
-            val popupContent = listOf(state.name, state.model?.generation, settings.language) + visualBattery(state)
+            val popupContent = listOf(state.name, state.model?.generation, state.model?.batteryForm, settings.language) + visualBattery(state)
             // Respect dismissal and the original eight-second deadline when later data arrives.
             if (now < popupDeadline && (firstPopup || notifications.activeNotifications.any { it.id == POPUP_ID }) &&
                 popupContent != lastPopupContent) {
                 notifications.notify(POPUP_ID, popupNotification(localized(this, settings), state, popupDeadline - now))
-                ProtocolDiagnostics.note("connection popup ${if (firstPopup) "shown" else "updated"}; remaining=${popupDeadline - now}ms")
+                if (BuildConfig.DEBUG) ProtocolDiagnostics.note("connection popup ${if (firstPopup) "shown" else "updated"}; remaining=${popupDeadline - now}ms")
                 lastPopupContent = popupContent
             }
         }
@@ -192,8 +194,8 @@ class AirModeService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val text = if (settings.persistent) batteryText(context, state) else
             if (context.resources.configuration.locales[0].language == "ru") {
-                if (state.connected) "AirPods подключены" else "Подключение AirPods…"
-            } else if (state.connected) "AirPods connected" else "Connecting AirPods…"
+                if (state.connected) "Наушники подключены" else "Подключение наушников…"
+            } else if (state.connected) "Headphones connected" else "Connecting headphones…"
         return Notification.Builder(this, CONNECTION_CHANNEL)
             .setSmallIcon(R.drawable.ic_airmode)
             .setContentTitle(state.name ?: "AirMode")
@@ -247,8 +249,13 @@ class AirModeService : Service() {
                 content.setTextViewText(status, detail)
                 content.setContentDescription(column, "$name $percentage $detail".trim())
             }
+            val headset = state.model?.batteryForm == BatteryForm.HEADPHONES
+            content.setViewVisibility(R.id.popup_case, if (headset) View.GONE else View.VISIBLE)
+            content.setViewVisibility(R.id.popup_right, if (headset) View.GONE else View.VISIBLE)
+            content.setImageViewResource(R.id.popup_left_icon, if (headset) R.drawable.ic_headset else R.drawable.ic_popup_earbud)
             component(R.id.popup_left, R.id.popup_left_label, R.id.popup_left_value, R.id.popup_left_status,
-                R.string.battery_left, state.battery.left)
+                if (headset) R.string.battery_headset else R.string.battery_left,
+                if (headset) state.battery.headset else state.battery.left)
             component(R.id.popup_case, R.id.popup_case_label, R.id.popup_case_value, R.id.popup_case_status,
                 R.string.battery_case, state.battery.case)
             component(R.id.popup_right, R.id.popup_right_label, R.id.popup_right_value, R.id.popup_right_status,
@@ -302,6 +309,8 @@ class AirModeService : Service() {
                 return if (!reading.available && reading.percent != null) "$percentage (${context.getString(R.string.widget_last_known, reading.percent)})"
                     else percentage
             }
+            if (state.model?.batteryForm == BatteryForm.HEADPHONES)
+                return "${context.getString(R.string.battery_headset)} ${value(state.battery.headset)}"
             return "${context.getString(R.string.battery_left)} ${value(state.battery.left)} · " +
                 "${context.getString(R.string.battery_right)} ${value(state.battery.right)} · " +
                 "${context.getString(R.string.battery_case)} ${value(state.battery.case)}"

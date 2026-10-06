@@ -17,7 +17,7 @@ class ProtocolTest {
             numbers.forEach { number -> assertEquals(ModelId(number, generation, anc), ModelId.fromNumber(number)) }
         }
         assertEquals("A3056", ModelId.fromNumber(" a3056 ")?.number)
-        listOf("AirPods 5", "A3048", "A3058", "A35310", "", "A3056\u0000").forEach {
+        listOf("AirPods 5", "A3122", "A3058", "A35310", "", "A3056\u0000").forEach {
             assertNull(ModelId.fromNumber(it))
         }
     }
@@ -127,7 +127,7 @@ class ProtocolTest {
         val valid = hex("040004000400010401640101")
         for (length in 0 until valid.size) assertNull(AapProtocol.parse(valid.copyOf(length), 1000))
         assertNull(AapProtocol.parse(valid + byteArrayOf(0), 1000))
-        listOf(0 to 0, 5 to 1, 6 to 0, 6 to 4, 7 to 1, 8 to 0, 9 to 101, 10 to 3, 11 to 0)
+        listOf(0 to 0, 5 to 1, 6 to 0, 6 to 4, 7 to 3, 8 to 0, 9 to 101, 10 to 3, 11 to 0)
             .forEach { (offset, value) ->
                 assertNull(AapProtocol.parse(valid.copyOf().apply { this[offset] = value.toByte() }, 1000))
             }

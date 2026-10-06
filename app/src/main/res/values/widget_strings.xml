@@ -1,5 +1,5 @@
 <resources>
-    <string name="widget_description">Заряд AirPods и четыре режима шума</string>
+    <string name="widget_description">Заряд и доступные режимы наушников</string>
     <string name="widget_last_known">было %1$d%%</string>
     <string name="widget_switching">Меняем режим…</string>
     <color name="widget_surface">@android:color/system_neutral1_50</color>
@@ -8,4 +8,5 @@
     <color name="widget_mode_surface">@android:color/system_accent1_100</color>
     <color name="widget_primary">@android:color/system_accent1_600</color>
     <color name="widget_on_primary">@android:color/system_accent1_0</color>
+    <color name="widget_battery_surface">@android:color/system_neutral2_100</color>
 </resources>

@@ -17,13 +17,15 @@ import app.airmode.BuildConfig
 import app.airmode.R
 import app.airmode.data.Settings
 import app.airmode.domain.Mode
+import app.airmode.domain.tileCycle
 
 @Composable
 fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
                    onPopup: (Boolean) -> Unit, onPersistent: (Boolean) -> Unit,
                    onAutoStart: (Boolean) -> Unit, onModes: (Set<Mode>) -> Unit,
                    onLanguage: (String) -> Unit, onAddTile: () -> Unit, onAddWidget: () -> Unit, onRepository: () -> Unit,
-                   onDiagnostics: () -> Unit = {}) {
+                   onDiagnostics: () -> Unit = {}, supportedModes: Set<Mode> = Mode.entries.toSet(),
+                   noControlText: Int = R.string.no_anc) {
     var versionTaps by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -40,22 +42,28 @@ fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.tile_modes), style = MaterialTheme.typography.titleMedium)
-            if (hasAnc) {
+            val modes = Mode.entries.filter { it in supportedModes }
+            val effectiveModes = tileCycle(supportedModes, settings.tileModes).toSet()
+            if (hasAnc && modes.size >= 2) {
                 Text(stringResource(R.string.tile_modes_hint), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-                    Mode.entries.forEachIndexed { index, mode ->
-                        val checked = mode in settings.tileModes
-                        val canChange = !checked || settings.tileModes.size > 2
+                    modes.forEachIndexed { index, mode ->
+                        val checked = mode in effectiveModes
+                        val canChange = !checked || effectiveModes.size > 2
                         SegmentedListItem(checked = checked, enabled = canChange,
-                            onCheckedChange = { onModes(if (checked) settings.tileModes - mode else settings.tileModes + mode) },
-                            shapes = ListItemDefaults.segmentedShapes(index, Mode.entries.size),
+                            onCheckedChange = {
+                                val selected = if (checked) effectiveModes - mode else effectiveModes + mode
+                                onModes((settings.tileModes - supportedModes) + selected)
+                            },
+                            shapes = ListItemDefaults.segmentedShapes(index, modes.size),
+                            leadingContent = { Icon(painterResource(mode.icon()), contentDescription = null, Modifier.size(24.dp)) },
                             trailingContent = { Checkbox(checked = checked, enabled = canChange, onCheckedChange = null) }) {
                             Text(stringResource(mode.label()))
                         }
                     }
                 }
-            } else Text(stringResource(R.string.no_anc))
+            } else Text(stringResource(noControlText))
             FilledTonalButton(onClick = onAddTile, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Icon(painterResource(R.drawable.ic_noise_anc), contentDescription = null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))

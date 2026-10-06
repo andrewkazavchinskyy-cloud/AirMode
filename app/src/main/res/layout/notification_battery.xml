@@ -8,7 +8,7 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="4dp">
         <LinearLayout android:id="@+id/popup_left" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
             <LinearLayout android:layout_width="wrap_content" android:layout_height="20dp" android:orientation="horizontal" android:gravity="center_vertical">
-                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_popup_earbud" android:contentDescription="@null" />
+                <ImageView android:id="@+id/popup_left_icon" android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_popup_earbud" android:contentDescription="@null" />
                 <TextView android:id="@+id/popup_left_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:textAppearance="@android:style/TextAppearance.Material.Notification.Line2" android:textSize="12sp" />
             </LinearLayout>
             <TextView android:id="@+id/popup_left_value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@android:style/TextAppearance.Material.Notification.Title" android:textSize="24sp" android:textStyle="bold" android:fontFamily="sans-serif-medium" />

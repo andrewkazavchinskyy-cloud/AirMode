@@ -12,6 +12,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import app.airmode.MainActivity
 import app.airmode.R
+import app.airmode.bluetooth.DeviceVendor
 import app.airmode.data.Settings
 import app.airmode.domain.*
 import app.airmode.service.AirModeService
@@ -51,7 +52,8 @@ class NoiseTileService : TileService() {
         val context = AirModeService.localized(this, settings)
         val label = when {
             !state.connected || state.connection == ConnectionState.UnsupportedModel -> context.getString(R.string.no_airpods)
-            state.model?.anc == false -> context.getString(R.string.tile_no_anc)
+            state.model?.supportedModes?.isEmpty() == true -> context.getString(
+                if (state.model.vendor == DeviceVendor.SONY) R.string.protocol_unavailable else R.string.tile_no_anc)
             state.connection == ConnectionState.ProtocolUnavailable -> context.getString(R.string.protocol_unavailable)
             state.mode != null -> context.getString(labelFor(state.mode))
             else -> context.getString(R.string.model_pending)
@@ -77,10 +79,11 @@ class NoiseTileService : TileService() {
                 }
                 val ready = withTimeoutOrNull((deadline - SystemClock.elapsedRealtime()).coerceAtLeast(1)) {
                     repository.state.first { it.canSwitch || it.connection == ConnectionState.ProtocolUnavailable ||
-                        it.connection == ConnectionState.UnsupportedModel || it.model?.anc == false }
+                        it.connection == ConnectionState.UnsupportedModel || it.model?.supportedModes?.isEmpty() == true }
                 }
                 if (ready?.canSwitch != true) { openApp(); return@launch }
-                val modes = Mode.entries.filter { it in repository.settings.state.value.tileModes }
+                val modes = tileCycle(ready.model?.supportedModes.orEmpty(), repository.settings.state.value.tileModes)
+                if (modes.size < 2) { openApp(); return@launch }
                 val next = modes[(modes.indexOf(ready.mode) + 1) % modes.size]
                 repository.switchMode(next)
             }

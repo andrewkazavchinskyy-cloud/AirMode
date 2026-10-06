@@ -34,3 +34,15 @@ The report includes actual AAP left 48 / right 61 / case 100 packets and later c
 One documented 4d FF declaration is sent on the first explicit Adaptive request in a proven ANC session, before the mode write; initial battery subscriptions are not delayed. This is a bounded compatibility trial, not an AirPods5-qualified or CA-neutral claim. Public notes associate the mask with Adaptive and CA during audio. Do not send CA-setting writes or expose CA controls. Only incoming mode 4 confirms Adaptive. Preserve the 400 ms write interval, one retry and 1.5 s deadline.
 
 Kill criteria: unsupported identity, unconfirmed mode, unexpected CA/audio behavior, session instability or broader privileges required. Stop further capability trials if unrelated behavior changes and retain the known three-mode path. Exact firmware/Pixel-build retesting remains required. Battery state is process-local; elapsed timestamps are never restored across reboot as fresh observations.
+
+## Expanded capabilities and case evidence,0.2.0
+
+One cohesive quick Council before implementation: Feynman1.5, Ada1.0, Socrates1.0; two rounds, three live same-inherited-model seats, one provider. All retained CAPABILITY at medium confidence; weighted2.625/3.5, no dealbreakers. Medium implementation confidence is not hardware qualification.
+
+New report confirms incoming Apple mode4, delayed1807ms after request. Loading remains≤1500ms but neutral confirmation can continue to2500ms; no optimistic selection. Case status4/00 is unavailable, not zero or a guessed percentage. Separate live case BLE data must survive an unavailable bud-link report. Fix scan attribution to selected-pair epoch rather than control-session epoch.
+
+Implement original bounded Apple AES proximity decoding only after fresh live Apple identity and returned keys; memory-only, strict layout/counter guards. Expand official AirPods model table and battery shape; older devices battery-only. Sony uses native advertised RFCOMM service, negotiated generation/identity/capabilities and device RET/NOTIFY; no reused Apple commands or fake Adaptive.
+
+Tradeoffs/assumptions: publicly observed Apple case layout is not yet confirmed on the user's AirPods5; AES block has no authenticated-integrity claim. Sony V1/V2 and model variants are experimental until exact hardware/firmware captures qualify them. Beats and wired EarPods are not implemented. A catalog/model name alone is not evidence of supported operations.
+
+Kill criteria: guessed identity/model generation, cached identity authorizing writes, guessed percent, optimistic mode confirmation, replay BLE refreshing freshness, universal tested claims, Sony automatic Adaptive conflated with manual Apple mode4, unknown protocol layout, unrelated setting changes, or broader privileges required. Retain available truthful charge and actionable errors. Review metadata:quick,3seats,2rounds,live3,degraded0,offline0,provider1,fallbacksnone; duration/tokens unknown.

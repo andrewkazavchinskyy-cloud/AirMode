@@ -1,5 +1,5 @@
 <resources>
-    <string name="widget_description">Заряд AirPods и четыре режима шума</string>
+    <string name="widget_description">Заряд и доступные режимы наушников</string>
     <string name="widget_last_known">было %1$d%%</string>
     <string name="widget_switching">Меняем режим…</string>
 </resources>

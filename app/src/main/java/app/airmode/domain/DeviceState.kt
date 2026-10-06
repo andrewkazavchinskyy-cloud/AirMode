@@ -22,7 +22,10 @@ data class DeviceState(
     val permissionGranted: Boolean = false,
     val connectionId: Long = 0L,
     val failedMode: Mode? = null,
+    val pendingMode: Mode? = null,
+    val controlBusy: Boolean = false,
 ) {
     val connected get() = connection != ConnectionState.Disconnected
-    val canSwitch get() = connection == ConnectionState.SessionReady && model?.anc == true
+    val awaitingConfirmation get() = pendingMode != null && connection == ConnectionState.SessionReady
+    val canSwitch get() = connection == ConnectionState.SessionReady && pendingMode == null && !controlBusy && (model?.supportedModes?.size ?: 0) >= 2
 }

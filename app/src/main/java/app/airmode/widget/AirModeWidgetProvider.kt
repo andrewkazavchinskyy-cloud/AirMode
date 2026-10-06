@@ -11,6 +11,9 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.RemoteViews
+import android.view.View
+import app.airmode.bluetooth.BatteryForm
+import app.airmode.bluetooth.DeviceVendor
 import app.airmode.MainActivity
 import app.airmode.R
 import app.airmode.data.Settings
@@ -63,31 +66,46 @@ class AirModeWidgetProvider : AppWidgetProvider() {
                 !state.permissionGranted -> localized.getString(R.string.permission_needed)
                 !state.connected -> localized.getString(R.string.no_airpods)
                 state.connection == ConnectionState.UnsupportedModel -> localized.getString(R.string.unsupported)
-                state.model?.anc == false -> localized.getString(R.string.no_anc)
+                state.model?.supportedModes?.isEmpty() == true -> localized.getString(
+                    if (state.model.vendor == DeviceVendor.SONY) R.string.sony_no_control else R.string.no_anc)
                 state.problem == Problem.SERVICE_UNAVAILABLE -> localized.getString(R.string.service_unavailable)
                 state.problem == Problem.NO_REPLY -> localized.getString(R.string.no_reply)
                 state.connection == ConnectionState.ProtocolUnavailable -> localized.getString(R.string.protocol_unavailable)
                 state.connection is ConnectionState.Switching -> localized.getString(R.string.widget_switching)
+                state.awaitingConfirmation -> localized.getString(R.string.awaiting_confirmation)
                 !state.canSwitch -> localized.getString(R.string.model_pending)
-                else -> localized.getString(labelFor(state.mode ?: Mode.OFF))
+                else -> state.mode?.let { localized.getString(labelFor(it)) }
+                    ?: localized.getString(R.string.control_connecting)
             }
-            val batteries = listOf(state.battery.left, state.battery.case, state.battery.right)
+            val headphones = state.model?.batteryForm == BatteryForm.HEADPHONES
+            val supported = state.model?.supportedModes ?: Mode.entries.toSet()
+            val batteries = if (headphones) listOf(state.battery.headset)
+                else listOf(state.battery.left, state.battery.case, state.battery.right)
             val permission = listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
                 .all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
             // A stale launcher view may remain clickable after process death. It grants no authority.
-            val actionable = permission && state.model?.anc != false && state.connection != ConnectionState.UnsupportedModel
-            val content = listOf(state.name, state.mode, state.canSwitch, actionable, status,
+            val actionable = permission && supported.isNotEmpty() && state.connection != ConnectionState.UnsupportedModel
+            val pendingMode = state.pendingMode != null || state.connection is ConnectionState.Switching
+            val content = listOf(state.name, state.mode, state.canSwitch, actionable, pendingMode, headphones, supported, status,
                 settings.language, localized.resources.configuration.uiMode) +
-                batteries.flatMap { listOf(it.percent, detail(it)) }
+                batteries.flatMap { listOf(it.percent, it.available, detail(it)) }
             if (!force && content == lastContent) return
             lastContent = content
             val views = RemoteViews(context.packageName, R.layout.widget_airmode)
             val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            views.setOnClickPendingIntent(R.id.widget_header, open)
             views.setOnClickPendingIntent(R.id.widget_title, open)
             views.setOnClickPendingIntent(R.id.widget_status, open)
             views.setTextViewText(R.id.widget_title, state.name ?: "AirMode")
             views.setTextViewText(R.id.widget_status, status)
+            views.setImageViewResource(R.id.widget_device_icon, if (headphones) R.drawable.ic_headset else R.drawable.ic_airmode)
+            views.setViewVisibility(R.id.widget_buds, if (headphones) View.GONE else View.VISIBLE)
+            views.setViewVisibility(R.id.widget_headset, if (headphones) View.VISIBLE else View.GONE)
+            views.setOnClickPendingIntent(R.id.widget_buds, open)
+            views.setOnClickPendingIntent(R.id.widget_headset, open)
+            views.setViewVisibility(R.id.widget_modes_top, if (supported.any { it == Mode.OFF || it == Mode.ANC }) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_modes_bottom, if (supported.any { it == Mode.TRANSPARENCY || it == Mode.ADAPTIVE }) View.VISIBLE else View.GONE)
             fun component(label: Int, value: Int, info: Int, name: Int, reading: BatteryReading) {
                 val caption = localized.getString(name)
                 val percentage = reading.percent?.takeIf { reading.available }?.let { "$it%" } ?: "—"
@@ -100,17 +118,22 @@ class AirModeWidgetProvider : AppWidgetProvider() {
             component(R.id.widget_left_label, R.id.widget_left_value, R.id.widget_left_info, R.string.battery_left, state.battery.left)
             component(R.id.widget_case_label, R.id.widget_case_value, R.id.widget_case_info, R.string.battery_case, state.battery.case)
             component(R.id.widget_right_label, R.id.widget_right_value, R.id.widget_right_info, R.string.battery_right, state.battery.right)
+            component(R.id.widget_headset_label, R.id.widget_headset_value, R.id.widget_headset_info, R.string.battery_headset, state.battery.headset)
             val buttons = listOf(R.id.widget_off, R.id.widget_anc, R.id.widget_transparency, R.id.widget_adaptive)
             Mode.entries.forEachIndexed { index, mode ->
                 val id = buttons[index]
-                views.setTextViewText(id, localized.getString(labelFor(mode)))
+                val label = localized.getString(labelFor(mode))
+                views.setViewVisibility(id, if (mode in supported) View.VISIBLE else View.GONE)
+                views.setTextViewText(id, label)
+                views.setContentDescription(id, if (state.mode == mode) localized.getString(R.string.mode_current, label) else label)
                 views.setInt(id, "setBackgroundResource", if (state.mode == mode) R.drawable.widget_mode_selected else R.drawable.widget_mode)
                 views.setTextColor(id, localized.getColor(if (state.mode == mode) R.color.widget_on_primary else R.color.widget_text))
                 views.setFloat(id, "setAlpha", if (actionable && state.canSwitch) 1f else 0.45f)
-                views.setBoolean(id, "setEnabled", true)
+                // Current requests stay disabled; cold launcher actions still revalidate the live session.
+                views.setBoolean(id, "setEnabled", !pendingMode)
                 val action = Intent(context, AirModeService::class.java).setAction(AirModeService.ACTION_WIDGET_MODE)
                     .putExtra(AirModeService.EXTRA_MODE, mode.code)
-                val click = if (actionable) PendingIntent.getForegroundService(context, 100 + mode.code, action,
+                val click = if (actionable && mode in supported) PendingIntent.getForegroundService(context, 100 + mode.code, action,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) else open
                 views.setOnClickPendingIntent(id, click)
             }

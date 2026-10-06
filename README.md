@@ -2,79 +2,90 @@
 
 **Русский · [English below](#english)**
 
-Бесплатное Android-приложение для заряда и режимов шума AirPods4/5. Kotlin, Jetpack Compose Material3 Expressive, системные цвета и тёмная тема. Без аккаунта, рекламы, подписки, сервера и INTERNET permission.
+Бесплатное приложение для заряда и режимов шума наушников Apple AirPods и Sony. Kotlin, один экран Compose Material 3 Expressive, системные цвета и тёмная тема. Без аккаунта, рекламы, подписки, сервера и INTERNET permission.
 
-**Статус0.1.2: установочная предварительная версия. Пользователь прислал реальные пакеты заряда AirPods5 с Pixel10Pro CP41.260831.007.A3 (SDK37): Л48%, П61%, кейс сообщал100%, затем был недоступен. Три режима работают по пользовательскому тесту; исправление Adaptive требует повторного аппаратного теста. Полная аппаратная приёмка остаётся открытой.** Результаты сборки и эмуляторов: [VERIFICATION](docs/VERIFICATION.md). Не считать APK гарантией переключения звука.
+**0.2.0 — предварительная версия.** На Pixel 10 Pro CP41.260831.007.A3 / SDK37 пользователь подтвердил работу AirPods5; отчёт0.1.2 содержит входящий Adaptive mode4. Кейс в этом отчёте сообщает «недоступен». Новое чтение BLE кейса и расширенные модели требуют физических тестов. Sony экспериментальный: доступные функции определяются ответами модели и прошивки, совместимость со всеми Sony не заявлена. [Проверки](docs/VERIFICATION.md), [аппаратный чеклист](docs/DEVICE_TEST.md).
 
-## Установить APK
+## Установить
 
-1. Откройте [GitHub Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), скачайте `AirMode-0.1.2.apk`. Репозиторий приватный: нужна учётная запись GitHub с доступом. Самому приложению аккаунт не нужен.
-2. На телефоне разрешите установку из этого источника, если Android попросит, затем откройте APK и нажмите «Установить».
-3. Спарьте AirPods через **системные настройки Bluetooth**, двойным тапом по передней части кейса. AirMode не выполняет спаривание.
-4. Откройте AirMode, разрешите Bluetooth, по желанию уведомления, нажмите «Готово». Отказ в уведомлениях не блокирует заряд и плитку.
-5. Для виджета нажмите «Добавить виджет на главный экран» в настройках AirMode и подтвердите системный диалог. Или удерживайте пустое место на главном экране → Виджеты → AirMode. Четыре кнопки выбирают режим напрямую.
-6. В настройках AirMode нажмите «Добавить плитку в шторку». Если система отказала: откройте шторку полностью → карандаш/«Изменить» → перетащите AirMode в активные плитки. Долгое нажатие открывает приложение.
+1. В [Release0.2.0](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.2.0) скачайте **AirMode-0.2.0.apk**. Для проверки кейса используйте **AirMode-0.2.0-diagnostics.apk**. Подпись прежняя, можно устанавливать поверх предыдущих версий. Приватный репозиторий требует GitHub-доступа; самому приложению аккаунт не нужен.
+2. Разрешите установку из браузера, если Android попросит, откройте APK. Сопряжение наушников выполняйте в системных настройках Bluetooth способом своей модели.
+3. Откройте AirMode, разрешите Bluetooth, по желанию уведомления, нажмите «Готово». Отказ в уведомлениях не блокирует заряд и переключение.
+4. Настройки AirMode → «Добавить виджет на главный экран». Либо удерживайте пустое место рабочего стола → Виджеты → AirMode. Кнопки выбирают доступные режимы напрямую.
+5. Настройки AirMode → «Добавить плитку в шторку». Если система отказала: полностью откройте шторку → Изменить/карандаш → перетащите AirMode. Долгое нажатие плитки открывает приложение.
 
-## Модели
+## Apple
 
-| Модель | Номера | Режимы |
+Распознаются все текущие беспроводные семейства AirPods из [справочника Apple](https://support.apple.com/en-us/109525). Это список реализованных моделей, а не аппаратная квалификация каждой прошивки.
+
+| Семейство | Номера наушников | Режимы |
 |---|---|---|
-| AirPods4 | A3053,A3050,A3054 | Только заряд |
-| AirPods4 ANC | A3056,A3055,A3057 | Выкл/Шумодав/Прозрачность/Адаптивный |
-| AirPods5 | A3531,A3532,A3533 | Все четыре |
-| AirPods5, беспроводной кейс | A3439,A3440,A3441 | Все четыре |
+| AirPods1 | A1523,A1722 | Заряд |
+| AirPods2 | A2032,A2031 | Заряд |
+| AirPods3 | A2565,A2564 | Заряд |
+| AirPods4 | A3053,A3050,A3054 | Заряд |
+| AirPods4 ANC | A3056,A3055,A3057 | Все четыре |
+| AirPods5 | A3531,A3532,A3533,A3439,A3440,A3441 | Все четыре |
+| Pro1 | A2084,A2083 | Выкл/Шумодав/Прозрачность |
+| Pro2 | A2931,A2699,A2698,A3047,A3048,A3049 | Все четыре |
+| Pro3 | A3063,A3064,A3065 | Все четыре |
+| Max1 | A2096,A3184 | Три режима, один заряд |
+| Max2 | A3454 | Все четыре, один заряд |
 
-Имя не доказывает поколение. Пока протокол не подтвердил модель, команды режима заблокированы. Pro/Max/AirPods1–3/Beats не поддерживаются. Долгое нажатие на ножку переключает доступные режимы без AirMode; доступные режимы зависят от настройки самих наушников.
+Имя Bluetooth не разрешает команды: нужна свежая модель из протокола. Номера кейсов не считаются моделями наушников. Beats и проводные EarPods пока не реализованы. Физическое управление ножкой/кнопкой работает без AirMode.
 
-## Android и ограничения
+## Sony
 
-- Заряд: Android12/API31+. Реальные три компонента приходят из протокола или корректно сопоставленной BLE рекламы; неизвестное — прочерк. BLE проценты округлены до десятков. Один общий процент не выдаётся за три отдельных.
-- Управление: рассчитано на исправленный стек Pixel Android16QPR3 с актуальным Google Play system update либо Android17. Но фактический успех зависит от доступности классического канала и прошивки, а не только номера Android.
-- Pixel10Pro/11Pro, stable и beta входят в целевую матрицу. Будущие beta не гарантируются; exact build результаты — в VERIFICATION. Последние официальные [QPR3Beta1 notes](https://developer.android.com/about/versions/17/qpr3/release-notes) изучены, это не означает их физический тест.
-- Используется узкий generic Android API bridge, Apache2.0; это не Bluetooth-библиотека и не установленный Xposed. Root и изменение VendorID не нужны. Android может заблокировать внутренний API; тогда появляется короткая ошибка с объяснением, заряд продолжается там, где есть достоверный источник.
-- Системные метаданные могут быть недоступны обычному приложению. Случайный BLE адрес нельзя безопасно привязать по близости или имени; AirMode не показывает чужую батарею. Если кейс неизвестен, откройте его рядом с телефоном; если канал недоступен, используйте ножку и проверьте обновления телефона.
-- Недоступный кейс сразу показывает «—» и отдельно последние данные. Кэш Android показывается только как последние данные, включая первый запуск после остановки процесса; он не выдаётся за текущее показание и не перезаписывает живой ответ наушников.
-- Адаптивный режим требует объявления возможностей сессии. Оно отправляется один раз при явном выборе Adaptive; первоначальная подписка заряда не задерживается. Документированная маска имеет более широкие эффекты на некоторых прошивках, поэтому проверяйте отсутствие неожиданного изменения звука при разговоре. AirMode не отправляет команд настройки Conversation Awareness.
-- Подтверждённый режим меняется только после ответа; через1.5s без нужного ответа показана ошибка. Запрос максимум один повтор через700ms, интервал отправки≥400ms.
-- Android требует минимальное уведомление службы при активном канале. Постоянный заряд в нём по умолчанию выключен; включается в настройках. Popup8s по умолчанию включён, без звука.
-- Фоновые ограничения телефона могут отклонить автозапуск; открытие приложения запускает разрешённую попытку. После отключения сокет закрывается сразу, служба останавливается через30s.
+Native RFCOMM MDR/Tandem V1/V2: сначала проверяются опубликованный сервис, ответ версии, модель и capabilities, затем текущие настройки. Семейства WH/WF/WI/MDR/LinkBuds и ULT WEAR допускаются только после этой проверки. Поддержанные схемы дают общий заряд полноразмерных наушников либо отдельные Л/П/Кейс у TWS; доступные Выкл/Шумодав/Прозрачность зависят от capabilities. Неизвестные схемы оставляют прочерки или отключают управление с объяснением.
 
-## Собрать в Android Studio
+Adaptive Sound Control Sony не приравнивается к четвёртому режиму AirPods. Перед тестом закройте Sony Sound Connect, чтобы он не занимал канал. Разные поколения и прошивки требуют проверки; гарантии «любой Sony работает» нет. [Схемы и источники](docs/PROTOCOL.md).
 
-Откройте корневую папку проекта. Установите бесплатные Android SDK Platform36, Build Tools36.0.0 и JDK17. Gradle сам загрузит закреплённые зависимости; платные ключи не нужны. Для быстрой установки используйте Run или debug APK.
+## Заряд, задержка и Android
+
+- Android12/API31+, min31/compile36/target36. Дизайн следует системным цветам и теме; нет собственного переключателя темы.
+- Заряд поступает из живого протокола или сопоставленного BLE объявления. Неизвестное — «—», недоступный/старый процент отдельно подписан. Общий заряд не дублируется в Л/П/Кейс; Max/WH показывают одно число.
+- Для неизвестного кейса откройте его рядом и нажмите «Обновить заряд». BLE окна4s, не чаще одного в15s. Когда живая Apple-сессия выдаёт ключи proximity, они временно используются в памяти для связи частного BLE адреса с текущей парой и чтения известных зашифрованных схем. Нет связи по RSSI/имени. Ключи не сохраняются и не попадают в отчёт. Эта схема ещё не подтверждена на вашем AirPods5.
+- Живой заряд кейса из BLE не затирается сообщением «кейс недоступен» от канала наушников. Android-кэш не выдаётся за свежее показание. Закрытый/далёкий кейс может не передавать заряд.
+- Режим подсвечивается только по ответу наушников. Анимация ожидания≤1.5s; затем текст «Ждём подтверждение», ответ принимается до2.5s. Это учитывает реальные ответы вашего Pixel около1.8s. Один повтор через700ms, физические записи≥400ms. Ошибка после2.5s, поздний реальный ответ обновляет подтверждённый режим.
+- Apple-управление зависит от Classic L2CAP PSM0x1001 и стека телефона. Целевая матрица — Pixel10Pro/11Pro stable/beta; каждая точная сборка квалифицируется отдельно. Будущая beta не гарантируется. Заблокированный канал выдаёт короткую ошибку, доступный заряд остаётся.
+- Узкий Apache2 Android API bridge вызывает только нативную Classic-фабрику: без root, Xposed runtime, VendorID и глобальных exemptions. Sony использует публичную RFCOMM-фабрику.
+- Adaptive Apple объявляет документированные возможности один раз после явного выбора. На некоторых прошивках маска имеет более широкие эффекты; проверьте отсутствие изменений при разговоре. Настройки Conversation Awareness не отправляются.
+- Тихий системный popup8s включён по умолчанию, постоянный заряд выключен. Android требует минимального foreground-уведомления, пока открыт канал. После отключения канал закрывается сразу, служба останавливается через30s. Ограничения фона могут потребовать открыть приложение.
+
+## Сборка
+
+Откройте корень в Android Studio, установите бесплатные SDK36/BuildTools36.0.0/JDK17.
 
 ```bash
 ./gradlew testDebugUnitTest lintRelease assembleDebug assembleRelease
 ```
 
-Debug APK: `app/build/outputs/apk/debug/app-debug.apk`. Без переменных подписи release output unsigned; в Android Studio используйте **Build → Generate Signed Bundle/APK → APK → Create new key**. Для CLI задайте `AIRMODE_KEYSTORE`, `AIRMODE_STORE_PASSWORD`, `AIRMODE_KEY_ALIAS=airmode`, `AIRMODE_KEY_PASSWORD`. Ключи/пароли не хранить в Git. Опубликованный APK подписан отдельным release-ключом, который сохранён вне репозитория. Собственный ключ не обновит опубликованную установленную сборку — сначала удалить приложение, потеряв только локальные настройки.
+Debug: app/build/outputs/apk/debug/app-debug.apk. Без ключа release unsigned. В Android Studio: Build → Generate Signed Bundle/APK → APK → Create new key. CLI: AIRMODE_KEYSTORE, AIRMODE_STORE_PASSWORD, AIRMODE_KEY_ALIAS=airmode, AIRMODE_KEY_PASSWORD. Секреты вне Git. Собственный ключ не обновляет APK, подписанный ключом этого проекта. CI unsigned APK отличается от подписанного Release.
 
-CI проверяет unit tests/lint и собирает APK; CI unsigned release не заменяет подписанный GitHub Release. [Протокол и источники](docs/PROTOCOL.md), [решения](docs/DECISIONS.md), [физический чеклист](docs/DEVICE_TEST.md), [лицензии зависимостей](NOTICE).
+## Диагностика
 
-AirMode не связан с Apple. AirPods — товарный знак Apple Inc. Лицензия приложения Apache-2.0.
+Установите diagnostics APK поверх текущего. Переподключите наушники, откройте кейс рядом, нажмите «Обновить заряд», проверьте приложение/плитку/виджет. Настройки → семь нажатий на версию → Отправить. Передайте текст отчёта вручную. Отчёт показывает источники, времена, факт получения ключей и числа распознанных объявлений; без адресов, имён, серийных номеров, ключей и encrypted payload. Ограниченная память процесса, без автоматической отправки/Logcat/диска. Обычная сборка удаляет диагностику. «Проверить popup» явно показывает тестовые значения.
+
+AirMode не связан с Apple или Sony. AirPods — товарный знак Apple Inc. Apache-2.0. [NOTICE](NOTICE), [решения](docs/DECISIONS.md).
 
 ## English
 
-AirMode is a free offline Android battery and noise-mode companion for **AirPods4/5 only**. Kotlin, one Compose Material3 Expressive Activity, system dynamic colors and dark mode. No account, ads, analytics, subscription, server or INTERNET permission.
+Free offline Android battery/noise-mode app for Apple AirPods and experimentally Sony. Kotlin, one Compose Material3 Expressive Activity, dynamic colors/system dark mode. No account, ads, analytics, subscription, server or INTERNET permission.
 
-**0.1.2 is an installable prerelease. The user supplied real AirPods5 battery packets from Pixel10Pro CP41.260831.007.A3 (SDK37): L48%, R61%, case100%, then unavailable. Three modes work in the user test; the Adaptive fix still needs hardware retesting. Full hardware acceptance remains open.** See [verification evidence](docs/VERIFICATION.md); successful compilation/socket construction is not audible noise-mode control.
+**0.2.0 is a prerelease.** The user's Pixel10Pro CP41.260831.007.A3 / SDK37 report confirms received AirPods5 mode4; its case is unavailable. New BLE case decoding and expanded models require hardware qualification. The Apple table lists implemented current AirPods families, not tested interoperability for every firmware. Beats/wired EarPods are not implemented. Sony functions are gated by live protocol/model/capabilities; universal Sony compatibility is not claimed.
 
-Download `AirMode-0.1.2.apk` from [Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), allow installation from your browser if prompted, and install. This private repository requires authorized GitHub access for downloads; the app itself needs no account. Pair earbuds through Android Bluetooth settings using a double tap on the case front. Open AirMode, grant Nearby devices/Bluetooth, optionally notifications, and finish onboarding. Add the tile using AirMode Settings or the expanded shade → Edit/pencil → drag AirMode. Long-press opens the app. Add the native launcher widget through AirMode Settings or long-press the home screen → Widgets → AirMode; its four buttons select modes directly.
+Download normal or diagnostics APK from [Release0.2.0](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.2.0). Same signing key supports in-place updates. Private GitHub access is required for downloads, not for app use. Pair through Android settings. Open AirMode, grant Bluetooth and optionally notifications, finish. Add the launcher widget or quick-settings tile through AirMode Settings; manual shade editing is available. Long-pressing the tile opens AirMode. Native hardware noise controls work independently.
 
-Supported numbers are in the table above. AirPods4 withoutANC are battery-only. Pro/Max/olderAirPods/Beats are excluded. Names never authorize control: protocol model confirmation is mandatory. Long-pressing the stem still controls available modes without this app.
+Max/headphones show one truthful battery; TWS show L/Case/R where available. Sony native RFCOMM V1/V2 verifies service/version/model/capabilities and recognized response layouts before commands. Off/ANC/Transparency depend on capabilities; Sony Adaptive Sound Control is not mapped to AirPods Adaptive. Close Sound Connect when testing. Unknown formats fail closed.
 
-Minimum Android12/API31. Noise control targets corrected Pixel Android16QPR3/current Google Play system update and Android17, including Pixel10Pro/11Pro stable/beta. Exact OS builds are tracked; future beta compatibility cannot be guaranteed. A pinned generic Apache2 Android API bridge calls the native classic socket factory without root, Xposed runtime, vendor spoofing or global exemptions. A blocked/failed transport shows a truthful unavailable error. Three actual component readings are required; aggregate battery is not duplicated, uncertain random-address BLE reports are not attributed to a nearby pair. Unknown stays—; case readings older than2min are marked stale. Advertisement readings are quantized10% values.
+Unknown charge stays—. Open the case nearby and Refresh battery:4-second windows at least15seconds apart. Live Apple proximity keys are memory-only and enable private-address attribution and recognized encrypted BLE layouts; this remains unqualified on your AirPods5. No RSSI/name attribution. A fresh case BLE reading survives an unavailable bud-link case report. Android cached values remain labelled last-known.
 
-Unavailable components immediately show — with separately labelled last-known data; metadata caches are labelled last-known even on first process startup, and unchanged values cannot refresh their age or override a present protocol reading. Adaptive sends the documented session-capability declaration once after explicit selection, without delaying initial battery subscriptions. That mask has broader effects on some firmware; verify no unexpected speech/audio behavior. No Conversation Awareness setting command is sent. UI confirms modes only from earbud responses. Missing acknowledgement causes rollback/error within1.5s, with one700ms retry and≥400ms write interval. Notification denial leaves app/tile functionality available. Optional silent popup lasts8s. Android requires a minimal foreground connection notification; optional continuous battery is disabled by default. Socket closes immediately after disconnect; service stops30s later. Background restrictions can require opening the app.
+Confirmed device replies alone change mode. Loading stops by1.5seconds, then neutral awaiting-confirmation text until2.5seconds; the user's real reply arrived around1.8seconds. One700ms retry, physical writes at least400ms apart. Late real replies update actual state. Apple Adaptive uses the documented capability declaration once after explicit selection; no Conversation Awareness settings are written. Check unrelated speech/audio behavior on your firmware.
 
-Build: open root in Android Studio, free SDK36/BuildTools36.0.0/JDK17; run the Gradle command above. Debug output is directly installable. Release requires your own signing key using Android Studio's Generate Signed APK flow or the four `AIRMODE_*` environment variables above. No paid keys. Signing secrets are excluded from Git. GitHub's published APK uses a dedicated persistent signing key; CI unsigned APK is not that release.
+Android12+ (min31/compile36/target36), Pixel10Pro/11Pro stable/beta target matrix, exact-build qualification required. Future betas cannot be guaranteed. Apple ClassicL2CAP access uses a narrow native invocation bridge without root/Xposed/vendor spoofing/global exemptions. Sony uses public RFCOMM. Silent native8s popup is default-on; optional persistent battery is default-off, with Android's required foreground status while connected. Socket closes on disconnect, service stops30seconds later.
 
-AirMode is not affiliated with Apple. AirPods is a trademark of Apple Inc. Application license: Apache-2.0. See [NOTICE](NOTICE), [protocol](docs/PROTOCOL.md) and [physical checklist](docs/DEVICE_TEST.md).
+Build with free Android Studio SDK36/BuildTools36/JDK17 and the Gradle command above. Unsigned release needs your own key via Android Studio or AIRMODE_* environment variables. Signing secrets stay outside Git; CI unsigned output is not the published signed release.
 
-## Диагностика заряда / Battery diagnostics
+Diagnostics updates preserve settings. Reconnect, open the case, Refresh, test controls and share the report via Settings → seven version taps. No addresses, names, serials, keys, encrypted payloads, disk/Logcat/network reporting. Normal release strips diagnostics. Popup preview and debug design screenshots are explicitly sample data, never live headphone evidence.
 
-`AirMode-0.1.2-diagnostics.apk` подписан тем же ключом и устанавливается поверх0.1.0/0.1.1, сохраняя настройки. В нём есть исправления источников заряда, нативный popup, виджет и объявление возможностей при выборе Adaptive. Подключите AirPods, откройте кейс рядом с телефоном, выньте оба наушника, проверьте заряд и выберите «Адаптивный». Затем закройте кейс и снова откройте его, чтобы сравнить новые показания. Настройки → семь нажатий на версию → «Отправить». Отправьте текст отчёта разработчику. «Проверить popup» использует явно демонстрационные80/54/76%, не данные наушников; главный экран никогда не подменяется тестовыми числами.
-
-Отчёт хранится только в ограниченной памяти процесса, без Bluetooth-адресов, имён и серийных номеров. Включены только заголовки/счётчики сообщений, ограниченные пакеты батареи, источник/доступность каждого компонента, времена безопасных TX/RX, положение наушников, состояние уведомлений и точная сборка телефона. Приложение не отправляет его автоматически. В обычном release диагностика отсутствует. Новый тихий канал popup имеет HIGH importance для системного heads-up; Android/DND и пользовательские настройки управляют показом. Подтверждённая модель может показать неизвестные значения «—», затем обновить их в пределах исходных8 секунд.
-
-The same-key diagnostics APK updates0.1.0/0.1.1 and preserves settings. Connect AirPods, open the case near the phone, take both buds out and select Adaptive. Close and reopen the case and compare new readings. Settings → tap version seven times → Share report. The Test popup uses clearly labelled sample values, never repository/home data. The bounded in-memory report excludes addresses, names and serials; it is shared only through an explicit user action. Normal release has no diagnostics. The new silent HIGH channel requests native heads-up; OS/DND/user settings retain control. Unknown values stay— and update within the original8s lifetime.
+Not affiliated with Apple or Sony. AirPods is a trademark of Apple Inc. Apache-2.0. [Protocol evidence](docs/PROTOCOL.md), [verification](docs/VERIFICATION.md), [device checklist](docs/DEVICE_TEST.md).

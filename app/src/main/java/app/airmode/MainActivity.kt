@@ -40,6 +40,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.airmode.bluetooth.ProtocolDiagnostics
 import app.airmode.domain.Repository
+import app.airmode.domain.Mode
+import app.airmode.bluetooth.DeviceVendor
 import app.airmode.service.AirModeService
 import app.airmode.tile.NoiseTileService
 import app.airmode.ui.*
@@ -157,7 +159,7 @@ class MainActivity : ComponentActivity() {
                                     notificationsAsked = true
                                     scope.launch { repository.settings.setPopup(false) }
                                 }, { scope.launch { repository.settings.completeOnboarding(); repository.refresh() } })
-                            settingsOpen -> SettingsScreen(settings, device.model?.anc != false, { settingsOpen = false },
+                            settingsOpen -> SettingsScreen(settings, device.model?.supportedModes?.isNotEmpty() != false, { settingsOpen = false },
                                 { value ->
                                     if (value && !notificationsGranted) { pendingNotification = "popup"; notificationDialog = true }
                                     else scope.launch { repository.settings.setPopup(value); repository.refresh() }
@@ -172,9 +174,11 @@ class MainActivity : ComponentActivity() {
                                 { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))) },
                                 onDiagnostics = {
                                     if (BuildConfig.DEBUG) diagnosticReport = ProtocolDiagnostics.report(applicationContext)
-                                })
+                                }, supportedModes = device.model?.supportedModes ?: Mode.entries.toSet(),
+                                noControlText = if (device.model?.vendor == DeviceVendor.SONY) R.string.sony_no_control else R.string.no_anc)
                             else -> HomeScreen(device.copy(permissionGranted = bluetoothGranted), repository::switchMode,
-                                { settingsOpen = true }, onBluetooth, onPermission, onAppSettings, permissionDenied)
+                                { settingsOpen = true }, onBluetooth, onPermission, onAppSettings, permissionDenied,
+                                onRefreshBattery = { repository.refresh(scan = true) })
                         }
                     }
                 }

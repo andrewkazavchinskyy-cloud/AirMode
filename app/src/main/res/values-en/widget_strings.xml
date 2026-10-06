@@ -1,5 +1,5 @@
 <resources>
-    <string name="widget_description">AirPods battery and four noise modes</string>
+    <string name="widget_description">Headphone battery and supported noise modes</string>
     <string name="widget_last_known">last %1$d%%</string>
     <string name="widget_switching">Switching mode…</string>
 </resources>
