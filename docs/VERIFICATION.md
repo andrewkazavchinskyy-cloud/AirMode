@@ -49,4 +49,8 @@ Native factory probe — debug-only instrumentation: создаёт TYPE_L2CAP P
 
 Локальные временные build outputs вынесены из iCloud через Gradle init script: iCloud создал конфликтный generated values-lo 2.xml и блокировал чтение. После смены build directory stale incremental cache дал ошибки внутренних Kotlin symbols; выполнена чистая сборка с kotlin.incremental=false. Source code остаётся в Git; новый checkout CI/Android Studio не содержит этих локальных generated файлов.
 
-GitHub Actions: финальный source run [37509494160](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37509494160) пока in_progress; локальные обязательные checks PASS. Первый CI failed на удалённом Google SDK tools package; workflow исправлен на platform-tools. Два промежуточных устаревших run отменены, history сохранена.
+GitHub Actions: [30a3fb9 run37508948540](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37508948540) SUCCESS (tests/lint/debug/release/artifact upload). Финальный source run [37509494160](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37509494160) пока in_progress; локальные обязательные checks PASS. Первый CI failed на удалённом Google SDK tools package; workflow исправлен на platform-tools. Два промежуточных устаревших run отменены, history сохранена.
+
+## GitHub release receipt
+
+[Release v0.1.0](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.1.0), опубликован (не draft), prerelease. Target2f033b5, кодd53a7ad. APK asset616287349 stateuploaded,2271318bytes; GitHub digest совпал с локальным SHA выше. APK и SHA256SUMS скачаны обратно через авторизованный gh; SHA256 validation PASS. Приватный репозиторий по стандарту пользователя; нужен доступ GitHub для загрузки, приложению аккаунт не нужен.
