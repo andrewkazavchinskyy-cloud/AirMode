@@ -25,6 +25,7 @@ class Repository private constructor(private val context: Context) {
     private val profiles = mutableMapOf<Int, BluetoothProfile>()
     private val connected = linkedMapOf<String, BluetoothDevice>()
     private val confirmed = mutableMapOf<String, ModelId>()
+    private val rejected = mutableSetOf<String>()
     private val recent = mutableMapOf<String, Long>()
     private var selected: BluetoothDevice? = null
     private var session: Session? = null
@@ -51,7 +52,7 @@ class Repository private constructor(private val context: Context) {
                 else @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
             scope.launch {
                 when (intent.action) {
-                    BluetoothDevice.ACTION_ACL_CONNECTED -> device?.let { connected[it.address] = it; recent[it.address] = SystemClock.elapsedRealtime() }
+                    BluetoothDevice.ACTION_ACL_CONNECTED -> device?.let { rejected.remove(it.address); connected[it.address] = it; recent[it.address] = SystemClock.elapsedRealtime() }
                     BluetoothDevice.ACTION_ACL_DISCONNECTED -> device?.let { connected.remove(it.address) }
                     BluetoothDevice.ACTION_BOND_STATE_CHANGED -> if (device?.bondState != BluetoothDevice.BOND_BONDED) device?.let { confirmed.remove(it.address) }
                     "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED" -> if (device != null && device.address == selected?.address) readMetadata(device)
@@ -129,6 +130,7 @@ class Repository private constructor(private val context: Context) {
         scanWindow()
     }
     private fun candidate(device: BluetoothDevice): Boolean {
+        if (device.address in rejected) return false
         if (confirmed.containsKey(device.address)) return true
         val model = metadata(device, 1)?.decodeToString()
         if (ModelId.fromNumber(model.orEmpty()) != null) return true
@@ -151,8 +153,10 @@ class Repository private constructor(private val context: Context) {
                     val model = ModelId.fromNumber(event.number)
                     if (model == null) {
                         confirmed.remove(device.address)
+                        rejected.add(device.address)
                         mutable.value = mutable.value.copy(connection = ConnectionState.UnsupportedModel, model = null, mode = null, battery = Battery(), problem = null)
                         session?.close(); session = null; connecting = false
+                        refresh() // Try the other connected pair after a proven unsupported model.
                     } else {
                         confirmed[device.address] = model
                         mutable.value = mutable.value.copy(model = model, name = event.name ?: state.value.name, problem = null)
