@@ -17,6 +17,7 @@ sealed interface ProtocolEvent {
 object AapProtocol {
     fun handshake() = bytes(0, 0, 4, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     fun notifications() = bytes(4, 0, 4, 0, 0x0F, 0, 0xFF, 0xFF, 0xFE, 0xFF)
+    fun allNotifications() = bytes(4, 0, 4, 0, 0x0F, 0, 0xFF, 0xFF, 0xFF, 0xFF)
     fun listening(mode: Mode) = bytes(4, 0, 4, 0, 9, 0, 0x0D, mode.code, 0, 0, 0)
 
     // CONNECT_RSP: msgType=1, service=4, result LE16=0. Never accept a truncated refusal field.

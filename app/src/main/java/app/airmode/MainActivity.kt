@@ -22,6 +22,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,10 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.airmode.bluetooth.ProtocolDiagnostics
 import app.airmode.domain.Repository
+import app.airmode.service.AirModeService
 import app.airmode.tile.NoiseTileService
 import app.airmode.ui.*
 import kotlinx.coroutines.launch
@@ -58,7 +65,9 @@ class MainActivity : ComponentActivity() {
         var notificationsAsked by rememberSaveable { mutableStateOf(false) }
         var notificationDialog by remember { mutableStateOf(false) }
         var pendingNotification by remember { mutableStateOf<String?>(null) }
+        var pendingPopupTest by remember { mutableStateOf(false) }
         var tileMessage by remember { mutableStateOf<Int?>(null) }
+        var diagnosticReport by remember { mutableStateOf<String?>(null) }
         var permissionsRefresh by remember { mutableIntStateOf(0) }
         val bluetoothGranted = permissionsRefresh.let { hasBluetoothPermission() }
         val notificationsGranted = permissionsRefresh.let { hasNotificationPermission() }
@@ -79,6 +88,11 @@ class MainActivity : ComponentActivity() {
                     "persistent" -> repository.settings.setPersistent(granted)
                 }
                 repository.refresh()
+                if (granted && pendingPopupTest && BuildConfig.DEBUG) {
+                    AirModeService.testPopup(applicationContext)
+                    diagnosticReport = ProtocolDiagnostics.report(applicationContext)
+                }
+                pendingPopupTest = false
             }
             pendingNotification = null
         }
@@ -151,20 +165,57 @@ class MainActivity : ComponentActivity() {
                                 { modes -> scope.launch { repository.settings.setTileModes(modes) } },
                                 { language -> scope.launch { repository.settings.setLanguage(language) } },
                                 { addTile { tileMessage = it } },
-                                { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))) })
+                                { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL))) },
+                                onDiagnostics = {
+                                    if (BuildConfig.DEBUG) diagnosticReport = ProtocolDiagnostics.report(applicationContext)
+                                })
                             else -> HomeScreen(device.copy(permissionGranted = bluetoothGranted), repository::switchMode,
                                 { settingsOpen = true }, onBluetooth, onPermission, onAppSettings, permissionDenied)
                         }
                     }
                 }
-                if (notificationDialog) AlertDialog(onDismissRequest = { notificationDialog = false; pendingNotification = null },
+                if (BuildConfig.DEBUG) diagnosticReport?.let { report ->
+                    val english = LocalConfiguration.current.locales[0].language == "en"
+                    AlertDialog(onDismissRequest = { diagnosticReport = null },
+                        title = { Text(if (english) "Bluetooth diagnostics" else "Диагностика Bluetooth") },
+                        text = {
+                            Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(if (english) "The report contains no serial numbers or MAC addresses. The test popup uses sample values. Review the report before sharing."
+                                    else "Отчёт не содержит серийных номеров или MAC-адресов. Тестовый popup использует демонстрационные значения. Просмотрите отчёт перед отправкой.")
+                                TextButton(onClick = {
+                                    if (!hasNotificationPermission()) {
+                                        pendingPopupTest = true
+                                        pendingNotification = "popup"
+                                        notificationDialog = true
+                                    } else {
+                                        AirModeService.testPopup(applicationContext)
+                                        diagnosticReport = ProtocolDiagnostics.report(applicationContext)
+                                    }
+                                }) { Text(if (english) "Test popup" else "Проверить popup") }
+                                SelectionContainer {
+                                    Text(report, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = {
+                            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, report)
+                            }, if (english) "Share report" else "Отправить отчёт"))
+                        }) { Text(if (english) "Share" else "Отправить") } },
+                        dismissButton = { TextButton(onClick = { diagnosticReport = null }) {
+                            Text(if (english) "Close" else "Закрыть")
+                        } })
+                }
+                if (notificationDialog) AlertDialog(onDismissRequest = { notificationDialog = false; pendingNotification = null; pendingPopupTest = false },
                     title = { Text(stringResource(R.string.allow_notifications)) },
                     text = { Text(stringResource(R.string.notification_explanation)) },
                     confirmButton = { TextButton(onClick = {
                         notificationDialog = false
                         if (Build.VERSION.SDK_INT >= 33) notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }) { Text(stringResource(R.string.continue_action)) } },
-                    dismissButton = { TextButton(onClick = { notificationDialog = false; pendingNotification = null }) {
+                    dismissButton = { TextButton(onClick = { notificationDialog = false; pendingNotification = null; pendingPopupTest = false }) {
                         Text(stringResource(R.string.cancel))
                     } })
                 tileMessage?.let { message -> AlertDialog(onDismissRequest = { tileMessage = null },

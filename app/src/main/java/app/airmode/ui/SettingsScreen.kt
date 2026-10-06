@@ -2,12 +2,13 @@
 
 package app.airmode.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -21,7 +22,9 @@ import app.airmode.domain.Mode
 fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
                    onPopup: (Boolean) -> Unit, onPersistent: (Boolean) -> Unit,
                    onAutoStart: (Boolean) -> Unit, onModes: (Set<Mode>) -> Unit,
-                   onLanguage: (String) -> Unit, onAddTile: () -> Unit, onRepository: () -> Unit) {
+                   onLanguage: (String) -> Unit, onAddTile: () -> Unit, onRepository: () -> Unit,
+                   onDiagnostics: () -> Unit = {}) {
+    var versionTaps by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
         TextButton(onClick = onBack) {
@@ -71,7 +74,11 @@ fun SettingsScreen(settings: Settings, hasAnc: Boolean, onBack: () -> Unit,
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.about), style = MaterialTheme.typography.titleMedium)
             Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
-                Surface(shape = ListItemDefaults.segmentedShapes(0, 3).shape) {
+                Surface(shape = ListItemDefaults.segmentedShapes(0, 3).shape,
+                    modifier = if (BuildConfig.DEBUG) Modifier.clickable {
+                        versionTaps++
+                        if (versionTaps == 7) { versionTaps = 0; onDiagnostics() }
+                    } else Modifier) {
                     ListItem(headlineContent = { Text(stringResource(R.string.version, BuildConfig.VERSION_NAME)) },
                         supportingContent = { Text(stringResource(R.string.license)) },
                         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer))

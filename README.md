@@ -4,7 +4,7 @@
 
 Бесплатное Android-приложение для заряда и режимов шума AirPods4/5. Kotlin, Jetpack Compose Material3 Expressive, системные цвета и тёмная тема. Без аккаунта, рекламы, подписки, сервера и INTERNET permission.
 
-**Статус0.1.1: установочная предварительная версия. Физические AirPods и Pixel10Pro/11Pro сейчас недоступны; аппаратные критерии PRD ещё НЕ проверены.** Результаты сборки и эмуляторов: [VERIFICATION](docs/VERIFICATION.md). Не считать APK гарантией переключения звука.
+**Статус0.1.1: установочная предварительная версия. Пользователь подтвердил переключение режимов на Pixel10Pro CP41.260831.007.A3 с AirPods5; заряд и popup в0.1.0 не работали. Полная аппаратная приёмка остаётся открытой.** Результаты сборки и эмуляторов: [VERIFICATION](docs/VERIFICATION.md). Не считать APK гарантией переключения звука.
 
 ## Установить APK
 
@@ -54,7 +54,7 @@ AirMode не связан с Apple. AirPods — товарный знак Apple 
 
 AirMode is a free offline Android battery and noise-mode companion for **AirPods4/5 only**. Kotlin, one Compose Material3 Expressive Activity, system dynamic colors and dark mode. No account, ads, analytics, subscription, server or INTERNET permission.
 
-**0.1.1 is an installable prerelease. Physical AirPods and Pixel10Pro/11Pro were unavailable. Hardware PRD acceptance is NOT verified.** See [verification evidence](docs/VERIFICATION.md); successful compilation/socket construction is not audible noise-mode control.
+**0.1.1 is an installable prerelease. The user reported working noise control on Pixel10Pro CP41.260831.007.A3 with AirPods5, but missing battery and popup in0.1.0. Full hardware acceptance remains open.** See [verification evidence](docs/VERIFICATION.md); successful compilation/socket construction is not audible noise-mode control.
 
 Download `AirMode-0.1.1.apk` from [Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), allow installation from your browser if prompted, and install. This private repository requires authorized GitHub access for downloads; the app itself needs no account. Pair earbuds through Android Bluetooth settings using a double tap on the case front. Open AirMode, grant Nearby devices/Bluetooth, optionally notifications, and finish onboarding. Add the tile using AirMode Settings or the expanded shade → Edit/pencil → drag AirMode. Long-press opens the app.
 
@@ -67,3 +67,11 @@ UI confirms modes only from earbud responses. Missing acknowledgement causes rol
 Build: open root in Android Studio, free SDK36/BuildTools36.0.0/JDK17; run the Gradle command above. Debug output is directly installable. Release requires your own signing key using Android Studio's Generate Signed APK flow or the four `AIRMODE_*` environment variables above. No paid keys. Signing secrets are excluded from Git. GitHub's published APK uses a dedicated persistent signing key; CI unsigned APK is not that release.
 
 AirMode is not affiliated with Apple. AirPods is a trademark of Apple Inc. Application license: Apache-2.0. See [NOTICE](NOTICE), [protocol](docs/PROTOCOL.md) and [physical checklist](docs/DEVICE_TEST.md).
+
+## Диагностика заряда / Battery diagnostics
+
+`AirMode-0.1.1-diagnostics.apk` подписан тем же ключом и устанавливается поверх0.1.0, сохраняя настройки. В нём уже есть оба документированных варианта подписки и новый нативный popup. Подключите AirPods, откройте кейс рядом с телефоном, подождите15 секунд, выньте наушники и переключите режим. Настройки → семь нажатий на версию → «Отправить». Отправьте текст отчёта разработчику. «Проверить popup» использует явно демонстрационные80/54/76%, не данные наушников; главный экран никогда не подменяется тестовыми числами.
+
+Отчёт хранится только в ограниченной памяти процесса, без Bluetooth-адресов, имён и серийных номеров. Включены только заголовки/счётчики сообщений, ограниченные пакеты батареи, состояние уведомлений и точная сборка телефона. Приложение не отправляет его автоматически. В обычном release диагностика отсутствует. Новый тихий канал popup имеет HIGH importance для системного heads-up; Android/DND и пользовательские настройки управляют показом. Подтверждённая модель может показать неизвестные значения «—», затем обновить их в пределах исходных8 секунд.
+
+The same-key diagnostics APK updates0.1.0 and preserves settings. Connect AirPods, open the case near the phone, wait15s, take the buds out and change a mode. Settings → tap version seven times → Share report. The Test popup uses clearly labelled sample values, never repository/home data. The bounded in-memory report excludes addresses, names and serials; it is shared only through an explicit user action. Normal release has no diagnostics. The new silent HIGH channel requests native heads-up; OS/DND/user settings retain control. Unknown values stay— and update within the original8s lifetime.

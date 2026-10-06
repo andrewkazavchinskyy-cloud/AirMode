@@ -129,6 +129,18 @@ class ProtocolTest {
         assertFalse(AapProtocol.handshakeAcknowledged(hex("010004000000").copyOf(65)))
         assertArrayEquals(hex("00000400010002000000000000000000"), AapProtocol.handshake())
         assertArrayEquals(hex("040004000f00fffffeff"), AapProtocol.notifications())
+        assertArrayEquals(hex("040004000f00ffffffff"), AapProtocol.allNotifications())
+    }
+
+    @Test fun diagnosticsExcludeIdentityBodiesButRetainBatteryLayout() {
+        val identity = metadata("PrivateName", "A3531") + "PrivateSerial".toByteArray()
+        val summary = ProtocolDiagnostics.packetSummary(identity, ProtocolEvent.Model("A3531", "PrivateName"))
+        assertFalse(summary.contains("PrivateName"))
+        assertFalse(summary.contains("PrivateSerial"))
+        assertFalse(summary.contains("50726976617465"))
+        val battery = hex("040004000400010401640101")
+        assertTrue(ProtocolDiagnostics.packetSummary(battery, AapProtocol.parse(battery, 1)).contains("battery=040004000400010401640101"))
+        assertFalse(ProtocolDiagnostics.packetSummary(battery.copyOf(65), null).contains("battery="))
     }
 
     private fun advert(status: Int, buds: Int, flags: Int) = ByteArray(27).apply {

@@ -1,6 +1,6 @@
 # Протокол / Protocol
 
-AirMode contains original Kotlin implementations. Only public protocol descriptions were consulted; companion app source was not copied. **Fixtures and compilation do not qualify physical AirPods 4/5 interoperability.** No physical capture or audible-change test has been performed for this release.
+AirMode contains original Kotlin implementations. Only public protocol descriptions were consulted; companion app source was not copied. **Fixtures and compilation do not qualify physical AirPods 4/5 interoperability.** The user reported successful noise switching on Pixel10Pro CP41.260831.007.A3 / AirPods5 using0.1.0, with missing battery/popup. No physical packet capture has yet been supplied.
 
 ## Native transport
 
@@ -14,7 +14,7 @@ Connect and initialization expire after 10 seconds without a valid parsed report
 
 ## Public AAP definitions
 
-Source: [AAP Definitions](https://github.com/librepods-org/librepods/blob/main/docs/AAP%20Definitions.md), a public protocol document describing AirPods Pro 2 firmware 7A305, **not proof for AirMode's supported generations**. Handshake begins `00 00 04 00`, differing from the PRD's ordinary-command prefix. Subscription uses the documented notification mask. Listening reports contain the selected mode; writes cannot confirm it. The feature-enablement packet is deliberately omitted because it also changes features outside scope. Adaptive may be rejected or reported as another mode; AirMode preserves the actual response.
+Source: [AAP Definitions](https://github.com/librepods-org/librepods/blob/main/docs/AAP%20Definitions.md), a public protocol document describing AirPods Pro 2 firmware 7A305, **not proof for AirMode's supported generations**. Handshake begins `00 00 04 00`, differing from the PRD's ordinary-command prefix. Subscription sends both documented masks once after acknowledged handshake: `040004000f00fffffeff` and `040004000f00ffffffff`. The independent author of [Voltaic documents firmware-dependent battery delivery](https://github.com/jcfs/voltaic#airpods); no companion source was consulted. This is a compatibility fix awaiting the user’s actual AirPods5 battery result. Listening reports contain the selected mode; writes cannot confirm it. The feature-enablement packet is deliberately omitted because it also changes features outside scope. Adaptive may be rejected or reported as another mode; AirMode preserves the actual response.
 
 The metadata example establishes `1d 00 02`, a little-endian body length at offsets 7–8 and `04 00` at 9–10. Total size is declared length plus 9. AirMode accepts this envelope only, decodes the first three NUL-terminated UTF-8 fields (name, model, manufacturer), and requires manufacturer `Apple Inc.`. It never searches serial or encrypted fields for a model. Unrecognized metadata variants leave the model unconfirmed.
 
@@ -32,6 +32,6 @@ An advertisement is not evidence of an `Axxxx` model number or ownership. The re
 
 `ProtocolTest` uses synthetic BLE and metadata fixtures constructed from field definitions, plus the public battery example and documented control bytes. They test parser expectations, malformed boundaries, UTF-8 rejection, all twelve model IDs, unknowns, advertiser-side swaps and mode mapping. They are **not real AirPods 4/5 captures**. `BatteryTest` checks per-component freshness and stale-data boundaries. Runtime timestamps use `SystemClock.elapsedRealtime()`.
 
-The decoder emits only name, model, battery and listening state; Session has no raw packet logging, serial logging or network code. Physical tests must record phone, OS build, beta status, AirPods model and firmware in `VERIFICATION.md` before hardware-ready claims.
+The decoder emits only name, model, battery and listening state; Normal release Session has no raw packet logging, serial logging or network code. Debug diagnostics retain a bounded in-memory battery-only packet body (max64bytes), six-byte headers/type counts for other messages, BLE association counts and notification permission/channel state. Metadata bodies, names, serials and addresses are excluded. No automatic export, Logcat or disk persistence. Physical tests must record phone, OS build, beta status, AirPods model and firmware in `VERIFICATION.md` before hardware-ready claims.
 
 Mode write rate is also enforced inside the existing Session write mutex immediately before the native write, so queued/fast-ACK requests cannot bypass400ms. Matching reports never cancel an in-flight write; finite request timers are isolated by monotonically increasing request IDs. App resume (or an already-dispatched tile click) requests one explicit retry after a transient ProtocolUnavailable state; passive listening never loops transport retries. No physical I/O timing claim follows from the unit tests.

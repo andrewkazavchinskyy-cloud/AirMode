@@ -68,6 +68,7 @@ class Session(
         }
         if (opened.connectionType != BluetoothSocket.TYPE_L2CAP) throw IOException("Unexpected transport")
         opened.connect()
+        ProtocolDiagnostics.note("control connected")
         val mtu = opened.maxReceivePacketSize
         if (mtu !in 1..65_535) throw IOException("Invalid receive MTU")
         // Android buffers each L2CAP SDU. Reading the negotiated MTU consumes its whole packet;
@@ -84,10 +85,14 @@ class Session(
                 if (AapProtocol.handshakeAcknowledged(packet)) {
                     acknowledged = true
                     send(AapProtocol.notifications())
+                    send(AapProtocol.allNotifications())
+                    ProtocolDiagnostics.note("handshake acknowledged; both notification masks sent")
                 }
                 continue
             }
-            val event = AapProtocol.parse(packet, SystemClock.elapsedRealtime()) ?: continue
+            val event = AapProtocol.parse(packet, SystemClock.elapsedRealtime())
+            ProtocolDiagnostics.packet(packet, event)
+            if (event == null) continue
             if (event is ProtocolEvent.Model) ancConfirmed.set(ModelId.fromNumber(event.number)?.anc == true)
             if (ready.compareAndSet(false, true)) onEvent(ProtocolEvent.Ready)
             onEvent(event)

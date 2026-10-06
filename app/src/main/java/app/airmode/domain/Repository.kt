@@ -246,6 +246,7 @@ class Repository private constructor(private val context: Context) {
         // A single aggregate level has no known left/right attribution and is never duplicated.
         runCatching { BluetoothDevice::class.java.getMethod("getBatteryLevel").invoke(device) }
         mutable.value = state.value.copy(battery = state.value.battery.merge(Battery(reading(10,13, state.value.battery.left), reading(11,14, state.value.battery.right), reading(12,15, state.value.battery.case))))
+        ProtocolDiagnostics.metadata(state.value.battery.known)
     }
     private fun scanWindow() {
         val device = selected ?: return
@@ -256,17 +257,21 @@ class Repository private constructor(private val context: Context) {
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 // Random BLE addresses cannot safely be attributed by RSSI/name alone.
-                if (result.device.address != device.address || token != generation) return
+                if (token != generation) return
                 val bytes = result.scanRecord?.getManufacturerSpecificData(0x004c) ?: return
-                val battery = AdvertParser.parse(bytes, SystemClock.elapsedRealtime()) ?: return
+                val matched = result.device.address == device.address
+                val battery = if (matched) AdvertParser.parse(bytes, SystemClock.elapsedRealtime()) else null
+                ProtocolDiagnostics.advertisement(matched, battery != null)
+                if (battery == null) return
                 scope.launch { if (token == generation) mutable.value = state.value.copy(battery = state.value.battery.merge(battery)) }
             }
-            override fun onScanFailed(errorCode: Int) { scope.launch { stopScan() } }
+            override fun onScanFailed(errorCode: Int) { ProtocolDiagnostics.note("BLE scan failed code=$errorCode"); scope.launch { stopScan() } }
         }
         scanCallback = callback
         try {
             scanner.startScan(listOf(ScanFilter.Builder().setManufacturerData(0x004c, byteArrayOf()).build()),
                 ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), callback)
+            ProtocolDiagnostics.note("BLE scan window started")
             scanJob = scope.launch { delay(4000); stopScan() }
         } catch (_: SecurityException) { stopScan() }
         catch (_: IllegalStateException) { stopScan() }

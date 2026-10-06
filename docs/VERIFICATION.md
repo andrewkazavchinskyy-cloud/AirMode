@@ -1,6 +1,6 @@
 # Verification / Проверки
 
-Дата: 2026-10-06. Версия 0.1.0, prerelease. **Аппаратная готовность PRD не подтверждена**: пользователь сообщил, что физического Pixel/AirPods сейчас нет.
+Дата: 2026-10-06. Версия 0.1.0, prerelease. **Полная аппаратная готовность PRD не подтверждена**. Позже пользователь сообщил о тесте Pixel10Pro CP41.260831.007.A3 / AirPods5: режимы переключаются, заряд и popup не показываются. Это пользовательское наблюдение, не захват пакетов и не полный чеклист.
 
 ## Сборка и APK
 
@@ -49,8 +49,21 @@ Native factory probe — debug-only instrumentation: создаёт TYPE_L2CAP P
 
 Локальные временные build outputs вынесены из iCloud через Gradle init script: iCloud создал конфликтный generated values-lo 2.xml и блокировал чтение. После смены build directory stale incremental cache дал ошибки внутренних Kotlin symbols; выполнена чистая сборка с kotlin.incremental=false. Source code остаётся в Git; новый checkout CI/Android Studio не содержит этих локальных generated файлов.
 
-GitHub Actions: [30a3fb9 run37508948540](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37508948540) SUCCESS (tests/lint/debug/release/artifact upload). Финальный source run [37509494160](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37509494160) пока in_progress; локальные обязательные checks PASS. Первый CI failed на удалённом Google SDK tools package; workflow исправлен на platform-tools. Два промежуточных устаревших run отменены, history сохранена.
+GitHub Actions: [30a3fb9 run37508948540](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37508948540) SUCCESS (tests/lint/debug/release/artifact upload). Финальный source run [37509494160](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37509494160) SUCCESS; скачанный artifact report подтвердил22tests/0failures/0ignored, все build/lint/upload steps SUCCESS. Первый CI failed на удалённом Google SDK tools package; workflow исправлен на platform-tools. Два промежуточных устаревших run отменены, history сохранена.
 
 ## GitHub release receipt
 
 [Release v0.1.0](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.1.0), опубликован (не draft), prerelease. Target2f033b5, кодd53a7ad. APK asset616287349 stateuploaded,2271318bytes; GitHub digest совпал с локальным SHA выше. APK и SHA256SUMS скачаны обратно через авторизованный gh; SHA256 validation PASS. Приватный репозиторий по стандарту пользователя; нужен доступ GitHub для загрузки, приложению аккаунт не нужен.
+
+##0.1.1 исправление по пользовательскому тесту
+Пользователь сообщил: Pixel10Pro CP41.260831.007.A3 / AirPods5 переключает режимы в0.1.0; батарея/popup не показываются. Телефон отдельно, USB недоступен; пользователь запросил диагностический APK. Это частичное аппаратное наблюдение, без захвата пакетов.0.1.1 отправляет оба документированных notification masks; строгий parser сохранён. Исправление батареи пока НЕ подтверждено на его устройстве.
+
+Новый silent HIGH channel создаёт нативный heads-up с тремя колонками,8s абсолютным timeout и уважением ручного dismissal. На Android17beta16KB эмуляторе: диагностика подписана тем же ключом, `adb install -r` поверх0.1.0 SUCCESS с сохранением EN/settings;7 version taps открыли отчёт. Test popup → объяснение → системное POST Allow → фактический heads-up с явно тестовым заголовком и80/54/76. Screenshot показывает демонстрационное notification, не реальные AirPods. Главный экран/Repository остаются Disconnected/—. Проверка не является тестом charge protocol.
+
+CI62ff242 (язык плитки/политика BLE до battery fix) [37511210924](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37511210924) SUCCESS. Новый источник battery fix проверяется отдельно.
+
+Финальная локальная0.1.1: `testDebugUnitTest lintRelease assembleDebug assembleRelease` BUILD SUCCESSFUL.23tests/0failures/0errors, release lint0errors/20warnings (dependency updates, layout suggestions, small status labels, unused resources/KTX). Оба APK apksigner verify/16KBzipalign PASS, одинаковый certificate21f14d555e532b6d1618595d41983f02868e1891254f0a7251085f833cc47cee. Debug33789766bytes SHA25610685c6322456da9b71241177a3713f0df7708792b03f63786ee912c99cb47b1; release2276062bytes SHA256bc1ffc7645235dda97f2e5f6147237ad28f7c5f015d1fe8951a804c59921a810. Release dex не содержит ProtocolDiagnostics или текста диагностического отчёта; оба manifest безINTERNET/location/microphone. Android16 signedrelease update SUCCESS, launch1052ms; активная cached QS tile теперь EN `No AirPods`, state0. Debug17beta update SUCCESS; без реальных AirPods главный экран—.
+
+Финальный diagnostic popup: screenshot [android17-diagnostics-popup.png](screenshots/android17-diagnostics-popup.png); native NotificationRecord ID3 имеет importance4, sound/vibrate=null, timeoutPT8S, custom headsUp/big views. После фактически выжданных9.2s active ID3 отсутствует. Повторный тестовый popup работает; статический отчёт после теста обновляет разрешение/channel4. Это строго демонстрационный preview.
+
+Финальный обычный release0.1.1 обновил diagnostic на Android17beta16KB без удаления настроек; install SUCCESS, launch/main SUCCESS с тремя—.

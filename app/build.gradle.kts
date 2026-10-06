@@ -24,6 +24,10 @@ android {
         }
     }
     buildTypes {
+        debug {
+            versionNameSuffix = "-diagnostics"
+            if (signingPath != null) signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

@@ -21,3 +21,6 @@ Android requires a foreground notification while maintaining control. Optional p
 
 ## Review metadata
 schema_version:1; mode:quick; panel_size:3; rounds_run:2 per review; provider_count:1; live:3; degraded:0; offline:0; tools_used:collaboration + primary sources; fallbacks_triggered:none; token/duration measures:unknown.
+
+## User-reported battery/popup defect,0.1.1
+User tested Pixel10Pro CP41.260831.007.A3 with AirPods5: modes switch, battery/popup absent. Phone is separate; user requested a diagnostic APK. Preserve strict battery parsing, send both documented notification masks once, and capture sanitized debug evidence before claiming hardware fix. Same release key signs diagnostics for an in-place update. Latest user request for a visible popup revises the original DEFAULT channel to a new silent HIGH channel, required for native heads-up; Android channel importance is immutable after creation. Decorated three-component RemoteViews remain within native notification chrome, no overlay permission/activity/fullscreen. Confirmed supported model can show truthful— values until charge arrives; updates retain the original8s deadline. Diagnostic test values are labelled and never written to Repository.
