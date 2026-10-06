@@ -26,6 +26,15 @@ class NoiseTileService : TileService() {
     private var listening: Job? = null
     private var switching: Job? = null
 
+    override fun onTileAdded() {
+        super.onTileAdded()
+        repository.start()
+        repository.refresh()
+        update(repository.state.value, repository.settings.state.value)
+        // Active tiles do not bind when the panel opens; initialize through a listening request.
+        refresh(this)
+    }
+
     override fun onStartListening() {
         super.onStartListening()
         repository.start()
