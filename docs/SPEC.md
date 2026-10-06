@@ -1,5 +1,7 @@
 # AirMode — approved scope
 
+Requests are recorded chronologically. Later explicit user revisions supersede earlier scope/distribution restrictions; current public use is described in README.
+
 User supplied the AirMode PRD on 2026-10-06, then required current stable/beta Google Pixel 10 Pro and 11 Pro compatibility and native Android 17 design.
 
 - Kotlin, one Compose Material 3 Activity, app.airmode, min31 / compile36 / target36, Apache2.0.
@@ -36,3 +38,7 @@ The user supplied0.1.2 physical diagnostics and reports remaining unknown case b
 The actual user's Adaptive reply arrives1807ms after write, past the original deadline. Keep visible loading≤1500ms, then neutral awaiting confirmation without optimistic mode; final failure2500ms. Retain≥400ms physical writes and one700ms retry. This explicit hardware-evidence revision supersedes the original immediate1500ms error criterion.
 
 Apple live-session proximity keys may transiently attribute private BLE addresses and decode only known layouts. No keys on disk/in reports; clear on disconnect/session replacement. Reject replay counters/unknown fields. No synthesized case percent or nearby-pair/RSSI inference. Default offline/privacy architecture remains unchanged.
+
+## Public stable publication, 2026-10-07
+
+The user reports good AirPods operation and Sony battery display, and explicitly requests a full stable release, public repository and accessible/indexable documentation. Promote the existing signed v0.2.0 without changing binary, tag, source or signing identity. Public RU/EN README and native static GitHub Pages guides provide installation, widgets/tiles, privacy, troubleshooting, supported families and evidence-scoped Android 16/17 compatibility. Sony model is unspecified; Sony mode control and the full physical acceptance matrix are not newly confirmed. Publication authorization supersedes the earlier prerelease-only distribution assumption, not evidence requirements. No app code or permission changes.
