@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <instrumentation android:name="app.airmode.TransportProbeInstrumentation" android:targetPackage="app.airmode" android:label="AirMode local transport check" />
+</manifest>

@@ -1,0 +1,24 @@
+AirMode — original application code, Apache License 2.0.
+
+Android Hidden API Bypass 6.1
+Copyright 2021-2025 LSPosed
+Apache License 2.0
+https://github.com/LSPosed/AndroidHiddenApiBypass
+Used only to invoke the native classic Bluetooth socket factory; does not install Xposed or require root.
+
+Material Design icons (settings and arrow_back)
+Copyright Google LLC
+Apache License 2.0
+https://github.com/google/material-design-icons
+
+AndroidX / Jetpack Compose / Material 3 / DataStore
+Copyright The Android Open Source Project
+Apache License 2.0
+https://developer.android.com/jetpack
+
+Kotlin and kotlinx.coroutines
+Copyright JetBrains s.r.o. and Kotlin Programming Language contributors
+Apache License 2.0
+https://kotlinlang.org/
+
+Protocol documents were consulted for wire facts only. No LibrePods, CAPod, PodsLink or other companion-application source code was copied.
