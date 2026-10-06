@@ -121,3 +121,20 @@ Expanded original code recognizes official AirPods1–5/Pro1–3/Max1–2 with p
 Local combined0.2.0 checks after Sony retry/busy and native widget negotiation fixes:63tests/0failures/0errors/0ignored; release lint0errors/0fatal/34warnings; debug/release assemble SUCCESS. Expected protocol AES/ECB lint warning remains: the wire block uses ECB, and no authenticated-integrity claim is made. No new dependencies added. Debug-only labelled design probe uses native instrumentation and never writes fixture state to Repository.
 
 Actual Android17 emulator CP41.260731.005.B1/API37/16KB, not user's physical build: in-place diagnostics updateSUCCESS/settings preserved; real disconnected app shows three unknown values. Real existing launcher widget updated to new card/buttons; cold mode tap after am kill starts connectedDevice FGS and keeps unknown/disconnected data, no successful headphone command claimed. Explicit sample-only snapshots cover AirPods5 three components/unknown case, neutral pending state, Sony WH single76%/three modes, Max1 single76%/three modes. Night mode/font1.3 labels/buttons fit; fixture banner is visible. Screenshot evidence in docs/screenshots/android17-020-*.png. Sony and Max fixtures are UI evidence only, not paired hardware.
+
+## Published signed0.2.0 receipt
+
+Source/tag targetc2f6f8a94ed17f84d5068824851205a7668d5d8a; exact committed source combined checks repeatSUCCESS:63tests/0failures/0errors/0ignored, release lint0errors/0fatal/34warnings, both assemblies. Normal APK version-control metadata contains this SHA, packageapp.airmode/versionCode4/min31/compile36/target36. Normal dex strips ProtocolDiagnostics, design/transport probes, RX report and new proximity/BLE diagnostic text. No INTERNET/location/microphone/overlay permission. Both apksigner verify and16KB zipalign PASS, same persistent cert21f14d555e532b6d1618595d41983f02868e1891254f0a7251085f833cc47cee.
+
+[Releasev0.2.0](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases/tag/v0.2.0) is non-draft/prerelease. Annotated tag remote objecta7e1d42306df0fc0c4a9db80ebb4215e5c0a94d2 dereferencesc2f6f8a94ed17f84d5068824851205a7668d5d8a; release metadata targetCommitishmain does not replace that fixed tag.
+
+| File | Bytes | SHA256 | Asset ID |
+|---|---:|---|---:|
+| AirMode-0.2.0.apk |2360046|42b92732e9e01914f31cd8acdc79f97b9f026252407166af1e66a60e892883df|616684858|
+| AirMode-0.2.0-diagnostics.apk |33584152|033d9838e81b8901cb62e2866c8d4a7e00fe6d1fb27873f42bf9e19d75d435be|616684862|
+
+SHA256SUMS asset616684863. Both stateuploaded. Downloaded both APKs and checksum file back from GitHub; both SHA256 checksPASS. Exact final normal APK updates/install/startSUCCESS on API36 and API37beta16KB, settings preserved; API36 COLD TotalTime1095ms, API37 COLD759ms. These emulator values do not qualify physical Pixel8 coldstart criterion. Normal pm list instrumentation is empty. RU/night/font1.3 and EN normal interfaces show honest disconnected data; native widget also fits dark/font1.3. Added final release screenshots and noANC sample-only layout proof.
+
+[Issue1](https://github.com/andrewkazavchinskyy-cloud/AirMode/issues/1) remainsOPEN, updated with latest partial actual evidence and0.2.0 Apple/Sony/case retest, retaining previous evidence/checklist. Older releases/assets/tags/commits preserved. Exact source [CI37532725646](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37532725646) was still running at this receipt; terminal/artifact evidence follows when received.
+
+Exact-source [CI37532725646](https://github.com/andrewkazavchinskyy-cloud/AirMode/actions/runs/37532725646) now terminalSUCCESS, headc2f6f8a94ed17f84d5068824851205a7668d5d8a; tests/lint/debug/release/upload/cleanup stepsSUCCESS. Downloaded artifact11444464184 APK-and-checks,13120439bytes, recorded digest88527fe7ef85f67cb75b6b278896f9d858c9dfe7066e8a23fb163f5c6674bab4. Its HTML report confirms63tests/0failures/0ignored. CI app-release-unsigned.apk is not the separately signed published APK. Hardware case truth, expanded Apple/Sony interoperability and exact latest Pixel10/11 stable/beta remain unverified.
