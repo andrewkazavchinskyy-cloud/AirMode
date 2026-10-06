@@ -63,8 +63,8 @@ class Repository private constructor(private val context: Context) {
     }
 
     fun start() = refresh()
-    fun retryControl() = refresh(retryProtocol = true)
-    fun refresh(retryProtocol: Boolean = false) {
+    fun retryControl(scan: Boolean = false) = refresh(retryProtocol = true, scan = scan)
+    fun refresh(retryProtocol: Boolean = false, scan: Boolean = false) {
         scope.launch {
             if (!hasBluetoothPermission()) {
                 disconnect(); mutable.value = mutable.value.copy(permissionGranted = false, problem = Problem.PERMISSION); return@launch
@@ -87,7 +87,7 @@ class Repository private constructor(private val context: Context) {
                 adapter.getProfileProxy(context, profileListener, BluetoothProfile.HEADSET)
             }
             discover(retryProtocol)
-            selected?.let { readMetadata(it); scanWindow() }
+            selected?.let { readMetadata(it); if (scan) scanWindow() }
         }
     }
     private fun hasBluetoothPermission() = listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)

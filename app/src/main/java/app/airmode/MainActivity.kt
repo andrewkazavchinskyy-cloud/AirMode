@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
                 if (event == Lifecycle.Event.ON_RESUME) {
                     permissionsRefresh++
                     if (hasBluetoothPermission()) permissionDenied = false
-                    repository.retryControl()
+                    repository.retryControl(scan = true)
                 }
             }
             lifecycle.addObserver(observer)
@@ -103,13 +103,14 @@ class MainActivity : ComponentActivity() {
             }
             createConfigurationContext(Configuration(resources.configuration).apply { setLocales(locales) })
         }
-        LaunchedEffect(settings.language) {
+        LaunchedEffect(settings.language, LocalConfiguration.current) {
             if (Build.VERSION.SDK_INT >= 33) {
                 val manager = getSystemService(LocaleManager::class.java)
                 val desired = if (settings.language == "system") LocaleList.getEmptyLocaleList()
                     else LocaleList.forLanguageTags(settings.language)
                 if (manager.applicationLocales != desired) manager.applicationLocales = desired
             }
+            NoiseTileService.refresh(this@MainActivity)
         }
         CompositionLocalProvider(LocalContext provides localizedContext,
             LocalConfiguration provides localizedContext.resources.configuration) {

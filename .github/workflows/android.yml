@@ -1,6 +1,8 @@
 name: Android checks
 on:
   push:
+    branches: [main]
+    paths-ignore: ['docs/**', 'memory/**', 'README.md', 'LICENSE', 'NOTICE']
   pull_request:
   workflow_dispatch:
 permissions:

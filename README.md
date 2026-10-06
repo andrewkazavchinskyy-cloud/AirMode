@@ -4,11 +4,11 @@
 
 Бесплатное Android-приложение для заряда и режимов шума AirPods4/5. Kotlin, Jetpack Compose Material3 Expressive, системные цвета и тёмная тема. Без аккаунта, рекламы, подписки, сервера и INTERNET permission.
 
-**Статус0.1.0: установочная предварительная версия. Физические AirPods и Pixel10Pro/11Pro сейчас недоступны; аппаратные критерии PRD ещё НЕ проверены.** Результаты сборки и эмуляторов: [VERIFICATION](docs/VERIFICATION.md). Не считать APK гарантией переключения звука.
+**Статус0.1.1: установочная предварительная версия. Физические AirPods и Pixel10Pro/11Pro сейчас недоступны; аппаратные критерии PRD ещё НЕ проверены.** Результаты сборки и эмуляторов: [VERIFICATION](docs/VERIFICATION.md). Не считать APK гарантией переключения звука.
 
 ## Установить APK
 
-1. Откройте [GitHub Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), скачайте `AirMode-0.1.0.apk`. Репозиторий приватный: нужна учётная запись GitHub с доступом. Самому приложению аккаунт не нужен.
+1. Откройте [GitHub Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), скачайте `AirMode-0.1.1.apk`. Репозиторий приватный: нужна учётная запись GitHub с доступом. Самому приложению аккаунт не нужен.
 2. На телефоне разрешите установку из этого источника, если Android попросит, затем откройте APK и нажмите «Установить».
 3. Спарьте AirPods через **системные настройки Bluetooth**, двойным тапом по передней части кейса. AirMode не выполняет спаривание.
 4. Откройте AirMode, разрешите Bluetooth, по желанию уведомления, нажмите «Готово». Отказ в уведомлениях не блокирует заряд и плитку.
@@ -54,9 +54,9 @@ AirMode не связан с Apple. AirPods — товарный знак Apple 
 
 AirMode is a free offline Android battery and noise-mode companion for **AirPods4/5 only**. Kotlin, one Compose Material3 Expressive Activity, system dynamic colors and dark mode. No account, ads, analytics, subscription, server or INTERNET permission.
 
-**0.1.0 is an installable prerelease. Physical AirPods and Pixel10Pro/11Pro were unavailable. Hardware PRD acceptance is NOT verified.** See [verification evidence](docs/VERIFICATION.md); successful compilation/socket construction is not audible noise-mode control.
+**0.1.1 is an installable prerelease. Physical AirPods and Pixel10Pro/11Pro were unavailable. Hardware PRD acceptance is NOT verified.** See [verification evidence](docs/VERIFICATION.md); successful compilation/socket construction is not audible noise-mode control.
 
-Download `AirMode-0.1.0.apk` from [Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), allow installation from your browser if prompted, and install. This private repository requires authorized GitHub access for downloads; the app itself needs no account. Pair earbuds through Android Bluetooth settings using a double tap on the case front. Open AirMode, grant Nearby devices/Bluetooth, optionally notifications, and finish onboarding. Add the tile using AirMode Settings or the expanded shade → Edit/pencil → drag AirMode. Long-press opens the app.
+Download `AirMode-0.1.1.apk` from [Releases](https://github.com/andrewkazavchinskyy-cloud/AirMode/releases), allow installation from your browser if prompted, and install. This private repository requires authorized GitHub access for downloads; the app itself needs no account. Pair earbuds through Android Bluetooth settings using a double tap on the case front. Open AirMode, grant Nearby devices/Bluetooth, optionally notifications, and finish onboarding. Add the tile using AirMode Settings or the expanded shade → Edit/pencil → drag AirMode. Long-press opens the app.
 
 Supported numbers are in the table above. AirPods4 withoutANC are battery-only. Pro/Max/olderAirPods/Beats are excluded. Names never authorize control: protocol model confirmation is mandatory. Long-pressing the stem still controls available modes without this app.
 
