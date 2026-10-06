@@ -15,10 +15,14 @@ internal suspend fun sendModeRequest(send: suspend () -> Unit, pending: () -> Bo
         throw cancelled
     } catch (_: Exception) { false }
 
-    if (attempt(500)) {
+    val sent = attempt(500)
+    if (!pending()) return false
+    if (sent) {
         val retryAt = maxOf(started + 700, now() + 400)
         delay((retryAt - now()).coerceAtLeast(0))
-        if (pending() && now() < deadline) attempt(minOf(400, deadline - now()))
+        if (!pending()) return false
+        if (now() < deadline) attempt(minOf(400, deadline - now()))
+        if (!pending()) return false
     }
     delay((deadline - now()).coerceAtLeast(0))
     return pending()

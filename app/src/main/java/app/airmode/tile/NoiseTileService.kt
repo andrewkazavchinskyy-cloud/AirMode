@@ -68,8 +68,7 @@ class NoiseTileService : TileService() {
         unlockAndRun {
             switching = scope.launch {
                 val deadline = SystemClock.elapsedRealtime() + 5_000
-                repository.start()
-                repository.refresh()
+                repository.retryControl()
                 if (!repository.state.value.permissionGranted) { openApp(); return@launch }
                 val connected = withTimeoutOrNull(4_000) { repository.state.first { it.connected } }
                 if (connected == null || !AirModeService.start(this@NoiseTileService)) {

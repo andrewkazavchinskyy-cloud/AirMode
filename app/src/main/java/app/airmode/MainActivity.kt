@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
                 if (event == Lifecycle.Event.ON_RESUME) {
                     permissionsRefresh++
                     if (hasBluetoothPermission()) permissionDenied = false
-                    repository.refresh()
+                    repository.retryControl()
                 }
             }
             lifecycle.addObserver(observer)

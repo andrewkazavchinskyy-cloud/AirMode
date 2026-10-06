@@ -30,6 +30,7 @@ class Repository private constructor(private val context: Context) {
     private var session: Session? = null
     private var generation = 0L
     private var command: Job? = null
+    private var requestId = 0L
     private var lastSend = -400L
     private var lastScan = -15_000L
     private var scanJob: Job? = null
@@ -61,7 +62,8 @@ class Repository private constructor(private val context: Context) {
     }
 
     fun start() = refresh()
-    fun refresh() {
+    fun retryControl() = refresh(retryProtocol = true)
+    fun refresh(retryProtocol: Boolean = false) {
         scope.launch {
             if (!hasBluetoothPermission()) {
                 disconnect(); mutable.value = mutable.value.copy(permissionGranted = false, problem = Problem.PERMISSION); return@launch
@@ -83,14 +85,14 @@ class Repository private constructor(private val context: Context) {
                 adapter.getProfileProxy(context, profileListener, BluetoothProfile.A2DP)
                 adapter.getProfileProxy(context, profileListener, BluetoothProfile.HEADSET)
             }
-            discover()
+            discover(retryProtocol)
             selected?.let { readMetadata(it); scanWindow() }
         }
     }
     private fun hasBluetoothPermission() = listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
         .all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
 
-    private fun discover() {
+    private fun discover(retryProtocol: Boolean = false) {
         if (!hasBluetoothPermission() || adapter?.isEnabled != true) { disconnect(); return }
         val actual = profiles.values.flatMap { runCatching { it.connectedDevices }.getOrDefault(emptyList()) }
         if (profiles.isNotEmpty()) { connected.clear(); actual.forEach { connected[it.address] = it } }
@@ -104,9 +106,13 @@ class Repository private constructor(private val context: Context) {
             return
         }
         if (preferred.address == selected?.address) {
-            if (state.value.problem == Problem.SERVICE_UNAVAILABLE && session == null && !connecting && AirModeService.start(context)) {
-                mutable.value = state.value.copy(problem = Problem.MODEL_PENDING)
-                openSession(preferred)
+            val retry = state.value.problem == Problem.SERVICE_UNAVAILABLE ||
+                (retryProtocol && state.value.connection == ConnectionState.ProtocolUnavailable)
+            if (retry && session == null && !connecting) {
+                mutable.value = state.value.copy(connection = ConnectionState.ConnectedNoSession,
+                    model = null, mode = null, problem = Problem.MODEL_PENDING)
+                if (AirModeService.start(context)) openSession(preferred)
+                else mutable.value = state.value.copy(problem = Problem.SERVICE_UNAVAILABLE)
             }
             return
         }
@@ -157,7 +163,9 @@ class Repository private constructor(private val context: Context) {
                 is ProtocolEvent.Listening -> {
                     mutable.value = mutable.value.copy(mode = event.mode)
                     val target = (state.value.connection as? ConnectionState.Switching)?.target
-                    if (target == event.mode) { command?.cancel(); command = null; mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady, problem = null) }
+                    // An ACK can arrive before the suspended write resumes. Let that write
+                    // finish; cancelling it would close the successful native socket.
+                    if (target == event.mode) mutable.value = mutable.value.copy(connection = ConnectionState.SessionReady, problem = null)
                     updateReady()
                 }
                 else -> Unit
@@ -192,14 +200,17 @@ class Repository private constructor(private val context: Context) {
             if (now - lastSend < 400) return@launch
             val token = generation
             val active = session ?: return@launch
+            val request = ++requestId
             mutable.value = s.copy(connection = ConnectionState.Switching(mode), problem = null)
             command = scope.launch {
                 val unanswered = sendModeRequest(
-                    send = { active.writeMode(mode); lastSend = SystemClock.elapsedRealtime() },
-                    pending = { token == generation && (state.value.connection as? ConnectionState.Switching)?.target == mode },
+                    send = { lastSend = SystemClock.elapsedRealtime(); active.writeMode(mode) },
+                    pending = { token == generation && request == requestId &&
+                        (state.value.connection as? ConnectionState.Switching)?.target == mode },
                     now = SystemClock::elapsedRealtime,
                 )
                 if (unanswered) mutable.value = state.value.copy(connection = ConnectionState.SessionReady, problem = Problem.NO_REPLY)
+                if (request == requestId) command = null
             }
         }
     }

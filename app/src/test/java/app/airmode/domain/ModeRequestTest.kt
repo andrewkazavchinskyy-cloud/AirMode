@@ -36,7 +36,35 @@ class ModeRequestTest {
         launch { delay(100); pending = false }
         assertFalse(sendModeRequest({ sends += testScheduler.currentTime }, { pending }, { testScheduler.currentTime }))
         assertEquals(listOf(0L), sends)
-        assertEquals(1_500L, testScheduler.currentTime)
+        assertEquals(700L, testScheduler.currentTime)
+    }
+
+    @Test fun acknowledgementDuringWriteDoesNotCancelOrConfuseLaterSameModeRequest() = runTest {
+        val sends = mutableListOf<Long>()
+        var activeRequest = 1L
+        var awaiting = true
+        var firstCompleted = false
+        var firstFinishedAt = -1L
+        val first = launch {
+            assertFalse(sendModeRequest({
+                sends += testScheduler.currentTime
+                delay(450)
+                firstCompleted = true
+            }, { activeRequest == 1L && awaiting }, { testScheduler.currentTime }))
+            firstFinishedAt = testScheduler.currentTime
+        }
+        launch { delay(100); awaiting = false }
+        delay(400)
+        activeRequest = 2L
+        awaiting = true
+        assertTrue(sendModeRequest({ sends += testScheduler.currentTime },
+            { activeRequest == 2L && awaiting }, { testScheduler.currentTime }))
+        first.join()
+        assertFalse(first.isCancelled)
+        assertTrue(firstCompleted)
+        assertEquals(450L, firstFinishedAt)
+        assertEquals(listOf(0L, 400L, 1_100L), sends)
+        assertEquals(1_900L, testScheduler.currentTime)
     }
 
     @Test fun failedWriteDoesNotRetryOrClaimSuccess() = runTest {
